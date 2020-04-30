@@ -153,7 +153,7 @@ class DataShakespeare(DataFactory):
                     continue
             
                 # cleanup
-                line = line.rstrip().lower()
+                line = line.rstrip().lower().replace("\r", "\n")
                 for c, r in [
                     ("'", ","), (";", ","), ('"', ","), (":", ","),
                     ("1", "one"), ("2", "two"), ("3", "three"), ("4", "four"), ("5", "five"),

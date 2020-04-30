@@ -53,7 +53,7 @@ def train(shard: int, args):
         if args.dataset == "simple":
             dataset = DataSimpleSentences(sentence_length=20, shard=shard, num_shards=args.num_shards)
         elif args.dataset == "shakespeare":
-            dataset = DataShakespeare(sentence_length=100, shard=shard, num_shards=args.num_shards, batch_size=1)
+            dataset = DataShakespeare(sentence_length=100, shard=shard, num_shards=args.num_shards, batch_size=args.batch_size)
 
         # create model and distribute
         rvqe = RVQE(workspace_size=args.workspace, stages=args.stages, order=args.order)
@@ -65,7 +65,11 @@ def train(shard: int, args):
         print(f"model has {len(list(rvqe_ddp.parameters()))} parameters.")
 
         postselected_training_phase = True
-        optimizer = torch.optim.Adam(rvqe_ddp.parameters(), lr=0.003)
+        if args.optimizer == "adam":
+            optimizer = torch.optim.Adam(rvqe_ddp.parameters(), lr=args.learning_rate)
+        elif args.optimizer == "rmsprop":
+            optimizer = torch.optim.RMSprop(rvqe_ddp.parameters(), lr=args.learning_rate)
+
         criterion = nn.CrossEntropyLoss()
 
         time_start = timer()
@@ -105,6 +109,8 @@ def train(shard: int, args):
                             "white"
                         )
 
+                        break  # only show one for now
+
 
 if __name__ == "__main__":
     import argparse
@@ -136,6 +142,27 @@ if __name__ == "__main__":
         default="simple",
         help="dataset; choose between simple and shakespeare"
     )
+    parser.add_argument(
+        "--batch-size",
+        metavar="B",
+        type=int,
+        default=1,
+        help="batch size; only relevant for shakespeare dataset",
+    )
+    parser.add_argument(
+        "--optimizer",
+        metavar="OPT",
+        type=str,
+        default="adam",
+        help="optimizer; one of adam or rmsprop"
+    )
+    parser.add_argument(
+        "--learning-rate",
+        metavar="LR",
+        type=float,
+        default="0.003",
+        help="learning rate for optimizer"
+    )
 
     args = parser.parse_args()
 
@@ -150,5 +177,14 @@ if __name__ == "__main__":
         
         import sys
         sys.exit(1)
+
+    if not args.optimizer in ["adam", "rmsprop"]:        
+        print("invalid optimizer")
+        parser.print_help()
+        
+        import sys
+        sys.exit(1)
+
+    
 
     torch.multiprocessing.spawn(train, args=(args,), nprocs=args.num_shards, join=True)

@@ -21,7 +21,9 @@ class DistributedTrainingEnvironment:
         self.world_size = world_size
         self.port = port
 
-        print(f"[{shard}] Hello from shard {shard} in a world of size {world_size}! Happy training!")
+        print(
+            f"[{shard}] Hello from shard {shard} in a world of size {world_size}! Happy training!"
+        )
 
     def __enter__(self):
         os.environ["MASTER_ADDR"] = "localhost"
@@ -51,9 +53,11 @@ def train(shard: int, args):
         EPOCHS = 10000
 
         if args.dataset == "simple":
-            dataset = DataSimpleSentences(sentence_length=20, shard=shard, num_shards=args.num_shards)
+            dataset = DataSimpleSentences(shard, **vars(args))
+        elif args.dataset == "xor":
+            dataset = DataXOR(shard, **vars(args))
         elif args.dataset == "shakespeare":
-            dataset = DataShakespeare(sentence_length=100, shard=shard, num_shards=args.num_shards, batch_size=args.batch_size)
+            dataset = DataShakespeare(**vars(args))
 
         # create model and distribute
         rvqe = RVQE(workspace_size=args.workspace, stages=args.stages, order=args.order)
@@ -101,12 +105,11 @@ def train(shard: int, args):
                     for sentence in sentences:
                         _, measured_seq = rvqe(sentence, postselect_measurement=False)
                         cprint(
-                            f"[{shard}] gold = { dataset.to_human(sentence) }",
-                            "yellow",
+                            f"[{shard}] gold = { dataset.to_human(sentence) }", "yellow",
                         )
                         cprint(
                             f"[{shard}] pred = { dataset.to_human(measured_seq, offset=1) }",
-                            "white"
+                            "white",
                         )
 
                         break  # only show one for now
@@ -140,7 +143,14 @@ if __name__ == "__main__":
         metavar="D",
         type=str,
         default="simple",
-        help="dataset; choose between simple and shakespeare"
+        help="dataset; choose between simple, xor and shakespeare",
+    )
+    parser.add_argument(
+        "--sentence-length",
+        metavar="SL",
+        type=int,
+        default=20,
+        help="sentence length for data generators",
     )
     parser.add_argument(
         "--batch-size",
@@ -154,37 +164,24 @@ if __name__ == "__main__":
         metavar="OPT",
         type=str,
         default="adam",
-        help="optimizer; one of adam or rmsprop"
+        help="optimizer; one of adam or rmsprop",
     )
     parser.add_argument(
         "--learning-rate",
         metavar="LR",
         type=float,
         default="0.003",
-        help="learning rate for optimizer"
+        help="learning rate for optimizer",
     )
 
     args = parser.parse_args()
 
-    # validate a bit
-    if args.dataset == "simple":
-        assert args.workspace >= 3, "need a workspace of size 3 for simple dataset"
-    elif args.dataset == "shakespeare":
-        assert args.workspace >= 5, "need a workspace of size 5 for shakespeare dataset"
-    else:
-        print("invalid dataset")
-        parser.print_help()
-        
-        import sys
-        sys.exit(1)
-
-    if not args.optimizer in ["adam", "rmsprop"]:        
-        print("invalid optimizer")
-        parser.print_help()
-        
-        import sys
-        sys.exit(1)
-
-    
+    # validate
+    required_workspace = {"simple": 3, "xor": 1, "shakespeare": 5}
+    assert args.dataset in required_workspace, "invalid dataset"
+    assert (
+        required_workspace[args.dataset] < args.workspace
+    ), f"need a workspace of size {required_workspace[args.dataset]} for {args.dataset} dataset"
+    assert args.optimizer in ["adam", "rmsprop"], "invalid optimizer"
 
     torch.multiprocessing.spawn(train, args=(args,), nprocs=args.num_shards, join=True)

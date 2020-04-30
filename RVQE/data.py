@@ -52,10 +52,11 @@ char_to_bin5.lut = [
 from abc import ABC, abstractmethod
 
 class DataFactory(ABC):
-    def __init__(self, shard: int, num_shards: int, batch_size: int):
+    def __init__(self, shard: int, num_shards: int, batch_size: int, sentence_length: int, **kwargs):
         self.shard = shard
         self.num_shards = num_shards
         self.batch_size = batch_size
+        self.sentence_length = sentence_length
         self._index = self.shard  # initial offset dependent on shard
 
     def next_batch(self) -> List[Tuple[tensor]]:
@@ -107,13 +108,13 @@ def alternating_sentence(length: int, constants: List[List[int]]) -> List[int]:
 
 
 class DataSimpleSentences(DataFactory):
-    def __init__(self, sentence_length: int, shard: int, num_shards: int):
-        super().__init__(batch_size=max(1, 2 // num_shards), shard=shard, num_shards=num_shards)
+    def __init__(self, shard: int, num_shards: int, **kwargs):
+        kwargs.update({ "batch_size": max(1, 2 // num_shards) })
+        super().__init__(shard, num_shards=num_shards, **kwargs)
 
-        self.sentence_length = sentence_length
         sentences = [
-            alternating_sentence(sentence_length, [[0, 0, 0], [0, 0, 1], [0, 1, 0], [0, 1, 1]]),
-            constant_sentence(sentence_length, [1, 0, 0]),
+            alternating_sentence(self.sentence_length, [[0, 0, 0], [0, 0, 1], [0, 1, 0], [0, 1, 1]]),
+            constant_sentence(self.sentence_length, [1, 0, 0]),
         ]
         self._batches_data = self._sentences_to_batches(sentences)
 
@@ -167,13 +168,12 @@ class DataShakespeare(DataFactory):
 
     
 
-    def __init__(self, sentence_length: int, shard: int, *args, **kwargs):
-        super().__init__(shard, *args, **kwargs)
+    def __init__(self, shard: int, **kwargs):
+        super().__init__(shard, **kwargs)
 
         # local rng
         self.rng = torch.Generator().manual_seed(8742 + shard)
 
-        self.sentence_length = sentence_length
         if self._data == None:
             self._load_shakespeare()
 
@@ -189,7 +189,7 @@ class DataShakespeare(DataFactory):
         # extract random batch of sentences
         sentences = []
         while len(sentences) < self.batch_size:
-            idx_start = torch.randint(len(self._data) - self.sentence_length, (1,), generator=self.rng).item()
+            idx_start = torch.randint(0, len(self._data) - self.sentence_length, (1,), generator=self.rng).item()
             sentences.append(self._data[idx_start : idx_start + self.sentence_length])
 
         # turn into batch
@@ -197,3 +197,46 @@ class DataShakespeare(DataFactory):
         
     def to_human(self, sentence: tensor, offset: int = 0) -> str:
         return " "*offset + "".join([ DataShakespeare.DISPLAY_CHARACTERS[bin_to_label(c)] for c in sentence ])
+
+
+
+# XOR Dataset
+class DataXOR(DataFactory):
+    def __init__(self, shard: int, **kwargs):
+        super().__init__(shard, **kwargs)
+
+        # local rng
+        self.rng = torch.Generator().manual_seed(8742 + shard)
+
+
+    @property
+    def _batches(self) -> List[Tuple[tensor]]:
+        raise NotImplementedError("next_batch overridden")
+
+
+    @property
+    def input_width(self) -> tensor:
+        return 1
+
+
+    def next_batch(self) -> List[Tuple[tensor]]:
+        # extract random batch of xor sequences like 011 101 110 000 ...
+        sentences = []
+        while len(sentences) < self.batch_size:
+            seq = []
+            for _ in range(0, self.sentence_length, 3):
+                a, b = torch.randint( 0, 2, (2,), generator=self.rng ).tolist()
+                c = a ^ b
+                seq += [[a], [b], [c]]
+            seq = seq[:self.sentence_length]
+
+            sentences.append(seq)
+
+        # turn into batch
+        return self._sentences_to_batches(sentences)[0]
+        
+    def to_human(self, sentence: tensor, offset: int = 0) -> str:
+        prequel = (sentence[: 3 - offset % 3],)
+        return " "*offset + " ".join([ 
+            "".join([ str(x[0]) for x in triple.tolist()]) for triple in prequel + torch.split(sentence[ 3 - offset % 3 :], 3)
+        ])

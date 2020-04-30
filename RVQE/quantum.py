@@ -50,9 +50,7 @@ def num_state_qubits(psi: tensor) -> int:
 
 
 def num_operator_qubits(op: tensor) -> int:
-    assert (
-        len(op.shape) % 2 == 0
-    ), "operator does not have same input and output indices"
+    assert len(op.shape) % 2 == 0, "operator does not have same input and output indices"
     return len(op.shape) // 2
 
 
@@ -62,10 +60,7 @@ _EINSUM_ALPHABET = "abcdefghijklmnopqrstuvwxyz"
 def squish_idcs_up(idcs: str) -> str:
     sorted_idcs = sorted(idcs)
     return "".join(
-        [
-            _EINSUM_ALPHABET[-i - 1]
-            for i in [len(idcs) - 1 - sorted_idcs.index(c) for c in idcs]
-        ]
+        [_EINSUM_ALPHABET[-i - 1] for i in [len(idcs) - 1 - sorted_idcs.index(c) for c in idcs]]
     )
 
 
@@ -74,12 +69,14 @@ def einsum_indices(m: int, n: int, target_lanes: Tuple[int]) -> Tuple[str, str, 
     assert len(target_lanes) == m, "number of target and operator indices don't match"
     assert torch.all(tensor(target_lanes) < n), "target lanes not present in state"
 
-    idcs_op = squish_idcs_up(
-        "".join(_EINSUM_ALPHABET[-l - 1] for l in target_lanes)
-    ) + "".join(_EINSUM_ALPHABET[r] for r in target_lanes)
+    idcs_op = squish_idcs_up("".join(_EINSUM_ALPHABET[-l - 1] for l in target_lanes)) + "".join(
+        _EINSUM_ALPHABET[r] for r in target_lanes
+    )
     idcs_target = _EINSUM_ALPHABET[:n]
 
-    assert len(idcs_op) + len(idcs_target) < len(_EINSUM_ALPHABET), "too few indices for torch's einsum"
+    assert len(idcs_op) + len(idcs_target) < len(
+        _EINSUM_ALPHABET
+    ), "too few indices for torch's einsum"
 
     idcs_result = ""
     idcs_op_lut = dict(
@@ -94,9 +91,7 @@ def einsum_indices(m: int, n: int, target_lanes: Tuple[int]) -> Tuple[str, str, 
     return (idcs_op, idcs_target, idcs_result)
 
 
-def probabilities(
-    psi: tensor, measured_lanes: Optional[List[int]] = None, verbose: bool = False
-):
+def probabilities(psi: tensor, measured_lanes: Optional[List[int]] = None, verbose: bool = False):
     if measured_lanes is None:
         measured_lanes = range(len(psi.shape))
     n = num_state_qubits(psi)
@@ -107,9 +102,7 @@ def probabilities(
     return torch.einsum(idcs_einsum, psi, psi).reshape(-1)
 
 
-def apply(
-    op: tensor, psi: tensor, target_lanes: List[int], verbose: bool = False
-) -> tensor:
+def apply(op: tensor, psi: tensor, target_lanes: List[int], verbose: bool = False) -> tensor:
     n = num_state_qubits(psi)
     m = num_operator_qubits(op)
 

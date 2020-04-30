@@ -7,7 +7,7 @@ from .compound_layers import (
     PostselectManyLayer,
 )
 from .quantum import tensor, ket0, probabilities
-from .data import pairwise
+from .data import pairwise, int_to_bin
 
 import torch
 from torch import nn
@@ -51,9 +51,7 @@ class RVQE(nn.Module):
         super().__init__()
         self.cell = RVQECell(*args, **kwargs)
 
-    def forward(
-        self, inputs: tensor, postselect_measurement: bool = True
-    ) -> Tuple[tensor, list]:
+    def forward(self, inputs: tensor, postselect_measurement: bool = True) -> Tuple[tensor, list]:
         # batched call; return stacked result
         if inputs.dim() == 3:
             batch_measured_seq = []
@@ -90,9 +88,7 @@ class RVQE(nn.Module):
                 measure = trgt
             else:
                 output_distribution = torch.distributions.Categorical(probs=p)
-                measure = tensor(
-                    int_to_bin(output_distribution.sample(), width=input_size)
-                )
+                measure = tensor(int_to_bin(output_distribution.sample(), width=input_size))
 
             measured_seq.append(measure)
             psi = PostselectManyLayer(input_lanes, measure).forward(psi)

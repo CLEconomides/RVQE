@@ -20,9 +20,7 @@ class BitFlipLayer(CompoundLayer):
 class PostselectManyLayer(CompoundLayer):
     def __init__(self, target_lanes: List[int], on: List[int]):
         super().__init__()
-        self.gates = nn.Sequential(
-            *[PostselectLayer(t, w) for t, w in zip(target_lanes, on)]
-        )
+        self.gates = nn.Sequential(*[PostselectLayer(t, w) for t, w in zip(target_lanes, on)])
 
 
 class UnitaryLayer(CompoundLayer):
@@ -44,9 +42,7 @@ class QuantumNeuronLayer(CompoundLayer):
         self.outlane = outlane
         self.order = order
 
-        self.ancilla_idcs = ancilla_idcs = list(
-            range(workspace_size, workspace_size + order)
-        )
+        self.ancilla_idcs = ancilla_idcs = list(range(workspace_size, workspace_size + order))
 
         # precompute parametrized gates as they need to share weights
         self._param_gates = []
@@ -70,9 +66,7 @@ class QuantumNeuronLayer(CompoundLayer):
 
         return static_gates if not dagger else _T_gate_list(static_gates)
 
-    def _append_gates_recursive(
-        self, _gates: List[GateLayer], recidx: int, dagger: bool
-    ):
+    def _append_gates_recursive(self, _gates: List[GateLayer], recidx: int, dagger: bool):
         if recidx == 0:
             _gates += self.param_gates(dagger=False)
             _gates += self.static_gates(0, dagger)

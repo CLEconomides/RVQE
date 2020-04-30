@@ -24,9 +24,7 @@ class GateLayer(nn.Module):
     def Ut(self) -> tensor:
         U = self.U
         shape = U.shape
-        dim = tensor(
-            U.shape[: len(U.shape) // 2]
-        ).prod()  # product of half of the dimensions
+        dim = tensor(U.shape[: len(U.shape) // 2]).prod()  # product of half of the dimensions
         return U.reshape(dim, dim).T.reshape(shape)
 
     @property
@@ -47,10 +45,7 @@ class GateLayer(nn.Module):
         basis = list(itertools.product("01", repeat=n))
 
         out = tensor(
-            [
-                [dot(ket("".join(x)), self.forward(ket("".join(y)))) for x in basis]
-                for y in basis
-            ]
+            [[dot(ket("".join(x)), self.forward(ket("".join(y)))) for x in basis] for y in basis]
         )
 
         return out
@@ -107,17 +102,9 @@ class crYLayer(GateLayer):
                 torch.stack([tensor([1.0, 0.0]), tensor([0.0, 0.0])]),
                 torch.stack([tensor([0.0, 1.0]), tensor([0.0, 0.0])]),
                 torch.stack(
-                    [
-                        tensor([0.0, 0.0]),
-                        torch.stack([(0.5 * θ).cos(), (-0.5 * θ).sin()]),
-                    ]
+                    [tensor([0.0, 0.0]), torch.stack([(0.5 * θ).cos(), (-0.5 * θ).sin()]),]
                 ),  # TRANSPOSED again, see comment above
-                torch.stack(
-                    [
-                        tensor([0.0, 0.0]),
-                        torch.stack([(0.5 * θ).sin(), (0.5 * θ).cos()]),
-                    ]
-                ),
+                torch.stack([tensor([0.0, 0.0]), torch.stack([(0.5 * θ).sin(), (0.5 * θ).cos()]),]),
             ]
         ).reshape(2, 2, 2, 2)
 

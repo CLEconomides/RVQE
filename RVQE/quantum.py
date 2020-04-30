@@ -79,6 +79,8 @@ def einsum_indices(m: int, n: int, target_lanes: Tuple[int]) -> Tuple[str, str, 
     ) + "".join(_EINSUM_ALPHABET[r] for r in target_lanes)
     idcs_target = _EINSUM_ALPHABET[:n]
 
+    assert len(idcs_op) + len(idcs_target) < len(_EINSUM_ALPHABET), "too few indices for torch's einsum"
+
     idcs_result = ""
     idcs_op_lut = dict(
         zip(idcs_op[m:], idcs_op[:m])

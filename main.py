@@ -77,7 +77,7 @@ def train(shard: int, world_size: int):
         TARGETS = TARGETS.unsqueeze(0)
 
         # create model and distribute
-        rvqe = RVQE(workspace_size=5, stages=2, order=2)
+        rvqe = RVQE(workspace_size=12, stages=8, order=2)
         rvqe_ddp = DistributedDataParallel(rvqe)
 
         for p in rvqe_ddp.parameters():
@@ -140,7 +140,7 @@ def train(shard: int, world_size: int):
 
 
 if __name__ == "__main__":
-    WORLD_SIZE = 1
+    WORLD_SIZE = 2
     pc = torch.multiprocessing.spawn(
         train, args=(WORLD_SIZE,), nprocs=WORLD_SIZE, join=True
     )

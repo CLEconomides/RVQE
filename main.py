@@ -123,9 +123,7 @@ class DistributedTrainingEnvironment:
             self._logger = MockSummaryWriter()
 
         if not hasattr(self, "_logger"):
-            self._logger = SummaryWriter(
-                comment=f"{self._checkpoint_prefix}"
-            )
+            self._logger = SummaryWriter(comment=f"{self._checkpoint_prefix}")
 
         return self._logger
 
@@ -220,7 +218,9 @@ def train(shard: int, args):
 
             # print loss each few epochs
             if epoch % 1 == 0:
-                print(f"{epoch:04d}/{args.epochs:04d} {timer() - time_start:5.1f}s  loss={loss:7.3e}")
+                print(
+                    f"{epoch:04d}/{args.epochs:04d} {timer() - time_start:5.1f}s  loss={loss:7.3e}"
+                )
 
             # log
             environment.logger.add_scalar("loss/train", loss, epoch)
@@ -255,10 +255,25 @@ def train(shard: int, args):
                             logtext += "    " + text + "\r\n"
 
                         validation_loss /= args.num_shards
-                        print(colored(f"validation loss: {validation_loss:7.3e}", "green"))
+
+                        # character error rate
+                        total = 0
+                        correct = 0
+                        for seq, sen in zip(measured_seqs, sentences):
+                            for wa, wb in zip(seq, sen[1:]):
+                                total += 1
+                                correct += 1 if torch.all(wa == wb) else 0
+
+                        character_error_rate = correct / total
+
+                        print(colored(f"validation loss:       {validation_loss:7.3e}", "green"))
+                        print(colored(f"character error rate:  {character_error_rate:.3f}", "green"))
 
                         # log
                         environment.logger.add_scalar("loss/validate", validation_loss, epoch)
+                        environment.logger.add_scalar(
+                            "character_error_rate", character_error_rate, epoch
+                        )
                         environment.logger.add_text("validation_samples", logtext, epoch)
 
                         # checkpointing
@@ -274,7 +289,7 @@ def train(shard: int, args):
                             )
                             if checkpoint is not None:
                                 environment.logger.add_text("checkpoint", checkpoint, epoch)
-                                print(colored(f"saved new best checkpoint {checkpoint}", "green"))
+                                print(f"saved new best checkpoint {checkpoint}")
 
                 environment.synchronize()
 
@@ -325,23 +340,17 @@ if __name__ == "__main__":
         help="number of validation samples to draw each 10 epochs",
     )
     parser.add_argument(
-        "--tag",
-        metavar="TAG",
-        type=str,
-        default="",
-        help="tag for checkpoints and logs"
+        "--tag", metavar="TAG", type=str, default="", help="tag for checkpoints and logs"
     )
     parser.add_argument(
-        "--epochs",
-        metavar="EP",
-        type=int,
-        default=5000,
-        help="number of learning epochs"
+        "--epochs", metavar="EP", type=int, default=5000, help="number of learning epochs"
     )
 
     subparsers = parser.add_subparsers(help="available commands")
 
-    parser_train = subparsers.add_parser("train", formatter_class=argparse.ArgumentDefaultsHelpFormatter,)
+    parser_train = subparsers.add_parser(
+        "train", formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     parser_train.set_defaults(func=command_train)
     parser_train.add_argument(
         "--workspace", metavar="W", type=int, default=5, help="qubits to use as workspace",
@@ -365,11 +374,7 @@ if __name__ == "__main__":
         help="sentence length for data generators",
     )
     parser_train.add_argument(
-        "--batch-size",
-        metavar="B",
-        type=int,
-        default=1,
-        help="batch size",
+        "--batch-size", metavar="B", type=int, default=1, help="batch size",
     )
     parser_train.add_argument(
         "--optimizer",
@@ -386,7 +391,9 @@ if __name__ == "__main__":
         help="learning rate for optimizer",
     )
 
-    parser_resume = subparsers.add_parser("resume", formatter_class=argparse.ArgumentDefaultsHelpFormatter,)
+    parser_resume = subparsers.add_parser(
+        "resume", formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     parser_resume.set_defaults(func=command_resume)
     parser_resume.add_argument("filename", type=str, help="checkpoint filename")
 

@@ -9,7 +9,6 @@ Bitword = NewType("Bitword", List[int])  # e.g. [0, 1, 1]
 Batch = NewType("Batch", Tuple[tensor, tensor])
 
 
-
 def pairwise(iterable):
     """
         s -> (s0,s1), (s1,s2), (s2, s3), ...
@@ -50,11 +49,15 @@ def char_to_bitword(char: str, characters: str, width: int) -> Bitword:
     char_bitword = f"{idx:b}".rjust(width, "0")
     return char_bitword[-width:]
 
+
 # data loader for distributed environment
 from abc import ABC, abstractmethod
 
+
 class DataFactory(ABC):
-    def __init__(self, shard: int, num_shards: int, batch_size: int, sentence_length: int, **kwargs):
+    def __init__(
+        self, shard: int, num_shards: int, batch_size: int, sentence_length: int, **kwargs
+    ):
         self.shard = shard
         self.num_shards = num_shards
         self.batch_size = batch_size
@@ -70,11 +73,11 @@ class DataFactory(ABC):
         return batch
 
     @staticmethod
-    def _sentence_to_target( sentence: List[Bitword]) -> List[int]:
-        return [ bitword_to_int(word) for word in sentence ]
+    def _sentence_to_target(sentence: List[Bitword]) -> List[int]:
+        return [bitword_to_int(word) for word in sentence]
 
     def _sentences_to_batches(self, sentences: List[List[Bitword]]) -> List[Batch]:
-        targets = tensor([ DataFactory._sentence_to_target(sentence) for sentence in sentences ])
+        targets = tensor([DataFactory._sentence_to_target(sentence) for sentence in sentences])
         sentences = tensor(sentences)
 
         # split into batch-sized chunks

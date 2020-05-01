@@ -27,7 +27,7 @@ class RVQECell(nn.Module):
                     *[
                         QuantumNeuronLayer(workspace_size, outlane, order)
                         for outlane in range(workspace_size)
-                    ]
+                    ],
                 )
                 for _ in range(stages)
             ]

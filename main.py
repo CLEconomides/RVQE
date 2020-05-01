@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 from torch.nn.parallel import DistributedDataParallel
 from torch.distributed import ReduceOp
+from torch.utils.tensorboard import SummaryWriter
 from timeit import default_timer as timer
 
 from RVQE.model import RVQE
@@ -20,13 +21,22 @@ from termcolor import colored
 import secrets
 
 
+class MockSummaryWriter:
+    def add_scalar(self, *args, **kwargs):
+        pass
+    def add_text(self, *args, **kwargs):
+        pass
+
+
 class DistributedTrainingEnvironment:
     def __init__(self, shard: int, args):
         self.shard = shard
         self.world_size = args.num_shards
         self.port = args.port
         self._original_args = args
-        self._checkpoint_prefix = secrets.token_hex(3)  # these are different in different shards; so checkpoint from the same shard always
+        self._checkpoint_prefix = secrets.token_hex(
+            3
+        )  # these are different in different shards; so checkpoint from the same shard always
 
         print(
             f"[{shard}] Hello from shard {shard} in a world of size {self.world_size}! Happy training!"
@@ -41,7 +51,7 @@ class DistributedTrainingEnvironment:
 
         # Explicitly setting seed to make sure that models created in two processes
         # start from same random weights and biases.
-        torch.manual_seed(6642)
+        torch.manual_seed(7856)
 
         return self
 
@@ -72,32 +82,52 @@ class DistributedTrainingEnvironment:
         torch.distributed.gather(data, gather_list, 0)
         return gather_list
 
-
     CHECKPOINT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "checkpoints/")
 
     def save_checkpoint(self, model, optimizer, **kwargs):
         """
             we don't check whether this is only called from shard 0
         """
-        kwargs.update({
-            "model_state_dict": model.state_dict(),
-            "optimizer_state_dict": optimizer.state_dict(),
-            "_original_args": self._original_args,
-            "_checkpoint_prefix": self._checkpoint_prefix
-        })
+        kwargs.update(
+            {
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "_original_args": self._original_args,
+                "_checkpoint_prefix": self._checkpoint_prefix,
+                "_torch_rng_state": torch.get_rng_state(),
+            }
+        )
 
-        filename = f"checkpoint-{self._checkpoint_prefix}-" + time.strftime("%Y-%m-%d--%H-%M-%S") + ".tar"
+        filename = (
+            f"checkpoint-{self._checkpoint_prefix}-" + time.strftime("%Y-%m-%d--%H-%M-%S") + ".tar"
+        )
         path = os.path.join(self.CHECKPOINT_PATH, filename)
 
         torch.save(kwargs, path)
         return filename
 
-
     def load_checkpoint(self, path: str) -> dict:
         store = torch.load(path)
+
         self._original_args = store["_original_args"]
         self._checkpoint_prefix = store["_checkpoint_prefix"]
+        torch.set_rng_state(store["_torch_rng_state"])
+
         return store
+
+    @property
+    def logger(self) -> SummaryWriter:
+        if self.shard != 0:
+            self._logger = MockSummaryWriter()
+
+        if not hasattr(self, "_logger"):
+            self._logger = SummaryWriter(comment=f"{self._original_args.dataset}-{self._checkpoint_prefix}")
+
+        return self._logger
+
+
+def dict_to_table(dct) -> str:
+    return "\r".join( f"    {k:>25} {v}" for k, v in dct.items() )
 
 
 def train(shard: int, args):
@@ -113,24 +143,28 @@ def train(shard: int, args):
             original_args = store["_original_args"]
             epoch_start = store["epoch"]
             best_validation_loss = store["best_validation_loss"]
-
         else:
             original_args = args
             epoch_start = 0
-            best_validation_loss = 10.**10
+            best_validation_loss = None
 
+        environment.logger.add_text( "args", dict_to_table(vars(args)), epoch_start )
 
         if original_args.dataset == "simple":
             dataset = datasets.DataSimpleSentences(shard, **vars(original_args))
         elif original_args.dataset == "elman-xor":
-            dataset =  datasets.DataElmanXOR(shard, **vars(original_args))
+            dataset = datasets.DataElmanXOR(shard, **vars(original_args))
         elif original_args.dataset == "elman-letter":
-            dataset =  datasets.DataElmanLetter(shard, **vars(original_args))
+            dataset = datasets.DataElmanLetter(shard, **vars(original_args))
         elif original_args.dataset == "shakespeare":
-            dataset =  datasets.DataShakespeare(**vars(original_args))
+            dataset = datasets.DataShakespeare(**vars(original_args))
 
         # create model and distribute
-        rvqe = RVQE(workspace_size=original_args.workspace, stages=original_args.stages, order=original_args.order)
+        rvqe = RVQE(
+            workspace_size=original_args.workspace,
+            stages=original_args.stages,
+            order=original_args.order,
+        )
         rvqe_ddp = DistributedDataParallel(rvqe)
 
         # create optimizer
@@ -154,7 +188,9 @@ def train(shard: int, args):
         environment.synchronize()
 
         if RESUME_MODE:
-            print(f"⏩ Resuming session! Model has {len(list(rvqe_ddp.parameters()))} parameters, and we start at epoch {epoch_start} with best validation loss {best_validation_loss:7.3e}.")
+            print(
+                f"⏩ Resuming session! Model has {len(list(rvqe_ddp.parameters()))} parameters, and we start at epoch {epoch_start} with best validation loss {best_validation_loss:7.3e}."
+            )
         else:
             print(f"⏩ New session! Model has {len(list(rvqe_ddp.parameters()))} parameters.")
 
@@ -177,9 +213,11 @@ def train(shard: int, args):
 
             # print loss each few epochs
             if epoch % 1 == 0:
-                print(
-                    f"{epoch:04d}/{EPOCHS:04d} {timer() - time_start:5.1f}s  loss={loss:7.3e}"
-                )
+                print(f"{epoch:04d}/{EPOCHS:04d} {timer() - time_start:5.1f}s  loss={loss:7.3e}")
+
+            # log
+            environment.logger.add_scalar("loss_train", loss, epoch)
+            environment.logger.add_scalar("time", timer() - time_start, epoch)
 
             # print samples every few epochs
             if epoch % 10 == 0:
@@ -187,7 +225,7 @@ def train(shard: int, args):
                     sentence, target = sentences[0], targets[0]
                     measured_probs, measured_seq = rvqe(sentence, postselect_measurement=False)
                     validation_loss = criterion(measured_probs, target[1:])
-                    
+
                     # collect in main shard
                     sentences = environment.gather(sentence)
                     measured_seqs = environment.gather(measured_seq)
@@ -196,27 +234,34 @@ def train(shard: int, args):
                     if shard == 0:
                         assert len(measured_seqs) == args.num_shards, "gather failed somehow"
 
+                        logtext = ""
                         for i in range(min(3, args.num_shards)):
                             seq = measured_seqs[i]
                             sen = sentences[i]
 
-                            print(
-                                colored(f"gold = { dataset.to_human(sen) }", "yellow"),
-                            )
-                            print(
-                                f"pred = { dataset.to_human(seq, offset=1) }"
-                            )
+                            text = f"gold = { dataset.to_human(sen) }"
+                            print(colored(text, "yellow"),)
+                            logtext += "    " + text + "\r\n"
+                            text = f"pred = { dataset.to_human(seq, offset=1) }"
+                            print(text)
+                            logtext += "    " + text + "\r\n"
 
                         validation_loss /= args.num_shards
                         print(colored(f"validation loss: {validation_loss:7.3e}", "green"))
 
+                        # log
+                        environment.logger.add_scalar("loss_validate", validation_loss, epoch)
+                        environment.logger.add_text("validation", logtext, epoch)
+
                         # checkpointing
-                        if validation_loss < best_validation_loss:
+                        if best_validation_loss is None or validation_loss < best_validation_loss:
                             best_validation_loss = validation_loss
-                            succ = environment.save_checkpoint(rvqe_ddp, optimizer, **{
-                                "epoch": epoch,
-                                "best_validation_loss": best_validation_loss
-                            })
+                            environment.logger.add_scalar("best_loss", best_validation_loss, epoch)
+                            succ = environment.save_checkpoint(
+                                rvqe_ddp,
+                                optimizer,
+                                **{"epoch": epoch, "best_validation_loss": best_validation_loss},
+                            )
                             if succ is not None:
                                 print(colored(f"saved new best checkpoint {succ}", "green"))
 

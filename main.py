@@ -54,8 +54,10 @@ def train(shard: int, args):
 
         if args.dataset == "simple":
             dataset = datasets.DataSimpleSentences(shard, **vars(args))
-        elif args.dataset == "xor":
-            dataset =  datasets.DataXOR(shard, **vars(args))
+        elif args.dataset == "elman-xor":
+            dataset =  datasets.DataElmanXOR(shard, **vars(args))
+        elif args.dataset == "elman-letter":
+            dataset =  datasets.DataElmanLetter(shard, **vars(args))
         elif args.dataset == "shakespeare":
             dataset =  datasets.DataShakespeare(**vars(args))
 
@@ -177,7 +179,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # validate
-    required_workspace = {"simple": 3, "xor": 1, "shakespeare": 5}
+    required_workspace = {"simple": 3, "elman-xor": 1, "elman-letter": 6, "shakespeare": 5}
     assert args.dataset in required_workspace, "invalid dataset"
     assert (
         required_workspace[args.dataset] < args.workspace

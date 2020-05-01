@@ -7,6 +7,6 @@ for optim in "${optimizers[@]}"
 do
     for lr in "${learningrates[@]}"
     do
-        ./main.py --tag lr-optim-test train --optimizer $optim --learning-rate $lr
+        ./main.py --tag lr-optim-test --epochs 500 train --optimizer $optim --learning-rate $lr
     done
 done

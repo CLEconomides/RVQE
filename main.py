@@ -36,7 +36,9 @@ class DistributedTrainingEnvironment:
         self.port = args.port
         self._original_args = args
         # the hex tokens are different in different shards; so checkpoint from the same shard always
-        self._checkpoint_prefix = f"-{args.tag}-{args.dataset}--{secrets.token_hex(3)}"
+        # this has to be set only initially, as it'll be restored on resume
+        if hasattr(args, "dataset"):
+            self._checkpoint_prefix = f"-{args.tag}-{args.dataset}--{secrets.token_hex(3)}"
 
         print(
             f"[{shard}] Hello from shard {shard} in a world of size {self.world_size}! Happy training!"
@@ -136,7 +138,6 @@ def train(shard: int, args):
     with DistributedTrainingEnvironment(shard, args) as environment:
         print, print_all = environment.print_once, environment.print_all
 
-        EPOCHS = 10000
         RESUME_MODE = hasattr(args, "filename")
 
         # either load or initialize new
@@ -201,7 +202,7 @@ def train(shard: int, args):
             print(f"⏩ New session! Model has {len(list(rvqe_ddp.parameters()))} parameters.")
 
         time_start = timer()
-        for epoch in range(epoch_start, EPOCHS):
+        for epoch in range(epoch_start, args.epochs):
             epoch += 1
             time_start = timer()
 
@@ -219,7 +220,7 @@ def train(shard: int, args):
 
             # print loss each few epochs
             if epoch % 1 == 0:
-                print(f"{epoch:04d}/{EPOCHS:04d} {timer() - time_start:5.1f}s  loss={loss:7.3e}")
+                print(f"{epoch:04d}/{args.epochs:04d} {timer() - time_start:5.1f}s  loss={loss:7.3e}")
 
             # log
             environment.logger.add_scalar("loss/train", loss, epoch)
@@ -329,6 +330,13 @@ if __name__ == "__main__":
         type=str,
         default="",
         help="tag for checkpoints and logs"
+    )
+    parser.add_argument(
+        "--epochs",
+        metavar="EP",
+        type=int,
+        default=5000,
+        help="number of learning epochs"
     )
 
     subparsers = parser.add_subparsers(help="available commands")

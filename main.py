@@ -35,9 +35,8 @@ class DistributedTrainingEnvironment:
         self.world_size = args.num_shards
         self.port = args.port
         self._original_args = args
-        self._checkpoint_prefix = secrets.token_hex(
-            3
-        )  # these are different in different shards; so checkpoint from the same shard always
+        # the hex tokens are different in different shards; so checkpoint from the same shard always
+        self._checkpoint_prefix = f"-{args.tag}-{args.dataset}--{secrets.token_hex(3)}"
 
         print(
             f"[{shard}] Hello from shard {shard} in a world of size {self.world_size}! Happy training!"
@@ -100,7 +99,7 @@ class DistributedTrainingEnvironment:
         )
 
         filename = (
-            f"checkpoint-{self._checkpoint_prefix}-" + time.strftime("%Y-%m-%d--%H-%M-%S") + ".tar"
+            f"checkpoint-{self._checkpoint_prefix}--" + time.strftime("%Y-%m-%d--%H-%M-%S") + ".tar"
         )
         path = os.path.join(self.CHECKPOINT_PATH, filename)
 
@@ -123,7 +122,7 @@ class DistributedTrainingEnvironment:
 
         if not hasattr(self, "_logger"):
             self._logger = SummaryWriter(
-                comment=f"{self._original_args.dataset}-{self._checkpoint_prefix}"
+                comment=f"{self._checkpoint_prefix}"
             )
 
         return self._logger
@@ -324,10 +323,17 @@ if __name__ == "__main__":
         default=2,
         help="number of validation samples to draw each 10 epochs",
     )
+    parser.add_argument(
+        "--tag",
+        metavar="TAG",
+        type=str,
+        default="",
+        help="tag for checkpoints and logs"
+    )
 
     subparsers = parser.add_subparsers(help="available commands")
 
-    parser_train = subparsers.add_parser("train")
+    parser_train = subparsers.add_parser("train", formatter_class=argparse.ArgumentDefaultsHelpFormatter,)
     parser_train.set_defaults(func=command_train)
     parser_train.add_argument(
         "--workspace", metavar="W", type=int, default=5, help="qubits to use as workspace",
@@ -355,7 +361,7 @@ if __name__ == "__main__":
         metavar="B",
         type=int,
         default=1,
-        help="batch size; only relevant for shakespeare dataset",
+        help="batch size",
     )
     parser_train.add_argument(
         "--optimizer",
@@ -372,9 +378,12 @@ if __name__ == "__main__":
         help="learning rate for optimizer",
     )
 
-    parser_resume = subparsers.add_parser("resume")
+    parser_resume = subparsers.add_parser("resume", formatter_class=argparse.ArgumentDefaultsHelpFormatter,)
     parser_resume.set_defaults(func=command_resume)
     parser_resume.add_argument("filename", type=str, help="checkpoint filename")
 
     args = parser.parse_args()
-    args.func(args)
+    if not hasattr(args, "func"):
+        parser.print_help()
+    else:
+        args.func(args)

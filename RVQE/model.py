@@ -7,7 +7,7 @@ from .compound_layers import (
     PostselectManyLayer,
 )
 from .quantum import tensor, ket0, probabilities
-from .data import pairwise, int_to_bin
+from .data import pairwise, int_to_bitword, Bitword
 
 import torch
 from torch import nn
@@ -37,7 +37,7 @@ class RVQECell(nn.Module):
     def num_qubits(self) -> int:
         return self.workspace_size + self.order
 
-    def forward(self, psi: tensor, input: List[int]) -> Tuple[tensor, tensor]:
+    def forward(self, psi: tensor, input: Bitword) -> Tuple[tensor, tensor]:
         # we assume psi has its input lanes reset to 0
         input_lanes = range(len(input))
         psi = BitFlipLayer([i for i in input_lanes if input[i] == 1]).forward(psi)
@@ -88,7 +88,7 @@ class RVQE(nn.Module):
                 measure = trgt
             else:
                 output_distribution = torch.distributions.Categorical(probs=p)
-                measure = tensor(int_to_bin(output_distribution.sample(), width=input_size))
+                measure = tensor(int_to_bitword(output_distribution.sample(), width=input_size))
 
             measured_seq.append(measure)
             psi = PostselectManyLayer(input_lanes, measure).forward(psi)

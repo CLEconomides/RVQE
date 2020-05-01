@@ -1,1 +1,1 @@
-from . import quantum, data, model
+from . import quantum, model, data, datasets

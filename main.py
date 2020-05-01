@@ -8,7 +8,7 @@ from timeit import default_timer as timer
 
 from RVQE.model import RVQE
 from RVQE.quantum import tensor
-from RVQE.data import *
+from RVQE import datasets
 
 from math import pi
 
@@ -53,11 +53,11 @@ def train(shard: int, args):
         EPOCHS = 10000
 
         if args.dataset == "simple":
-            dataset = DataSimpleSentences(shard, **vars(args))
+            dataset = datasets.DataSimpleSentences(shard, **vars(args))
         elif args.dataset == "xor":
-            dataset = DataXOR(shard, **vars(args))
+            dataset =  datasets.DataXOR(shard, **vars(args))
         elif args.dataset == "shakespeare":
-            dataset = DataShakespeare(**vars(args))
+            dataset =  datasets.DataShakespeare(**vars(args))
 
         # create model and distribute
         rvqe = RVQE(workspace_size=args.workspace, stages=args.stages, order=args.order)

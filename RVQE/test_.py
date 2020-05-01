@@ -168,8 +168,10 @@ from .data import *
 
 def test_data():
     assert equal(
-        bin_to_onehot(tensor([0, 0, 1]), 3), tensor([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
+        bitword_to_onehot(tensor([0, 0, 1]), 3), tensor([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
     )
-    assert bin_to_label(tensor([0, 1, 1])) == 3
-    assert int_to_bin(12, 10) == [0, 0, 0, 0, 0, 0, 1, 1, 0, 0]
-    assert bin_to_str([1, 1, 1, 0]) == "1110"
+    assert bitword_to_int(tensor([0, 1, 1])) == 3
+    assert int_to_bitword(12, 10) == [0, 0, 0, 0, 0, 0, 1, 1, 0, 0]
+    assert bitword_to_str([1, 1, 1, 0]) == "1110"
+    assert char_to_bitword("c", "abc", 3) == "010"
+    assert char_to_bitword("c", "abc", 1) == "0"

@@ -173,7 +173,9 @@ def train(shard: int, args):
         rvqe_ddp = DistributedDataParallel(rvqe)
 
         # create optimizer
-        if original_args.optimizer == "adam":
+        if original_args.optimizer == "sgd":
+            optimizer = torch.optim.SGD(rvqe_ddp.parameters(), lr=original_args.learning_rate)
+        elif original_args.optimizer == "adam":
             optimizer = torch.optim.Adam(rvqe_ddp.parameters(), lr=original_args.learning_rate)
         elif original_args.optimizer == "rmsprop":
             optimizer = torch.optim.RMSprop(rvqe_ddp.parameters(), lr=original_args.learning_rate)
@@ -290,7 +292,7 @@ def command_train(args):
     assert (
         required_workspace[args.dataset] < args.workspace
     ), f"need a workspace larger than {required_workspace[args.dataset]} for {args.dataset} dataset"
-    assert args.optimizer in ["adam", "rmsprop"], "invalid optimizer"
+    assert args.optimizer in ["sgd", "adam", "rmsprop"], "invalid optimizer"
 
     torch.multiprocessing.spawn(train, args=(args,), nprocs=args.num_shards, join=True)
 
@@ -360,7 +362,7 @@ if __name__ == "__main__":
         metavar="OPT",
         type=str,
         default="adam",
-        help="optimizer; one of adam or rmsprop",
+        help="optimizer; one of sgd, adam or rmsprop",
     )
     parser_train.add_argument(
         "--learning-rate",

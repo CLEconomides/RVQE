@@ -1,3 +1,3 @@
 from .shakespeare import DataShakespeare
-from .simple import DataSimpleSentences
+from .simple import DataSimpleSequences, DataSimpleQuotes
 from .elman import DataElmanXOR, DataElmanLetter

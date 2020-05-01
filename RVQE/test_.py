@@ -173,5 +173,5 @@ def test_data():
     assert bitword_to_int(tensor([0, 1, 1])) == 3
     assert int_to_bitword(12, 10) == [0, 0, 0, 0, 0, 0, 1, 1, 0, 0]
     assert bitword_to_str([1, 1, 1, 0]) == "1110"
-    assert char_to_bitword("c", "abc", 3) == "010"
-    assert char_to_bitword("c", "abc", 1) == "0"
+    assert bitword_to_str(char_to_bitword("c", "abc", 3)) == "010"
+    assert bitword_to_str(char_to_bitword("c", "abc", 1)) == "0"

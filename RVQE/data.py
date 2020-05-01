@@ -47,7 +47,7 @@ def bitword_to_str(lst: Union[Bitword, tensor]) -> str:
 def char_to_bitword(char: str, characters: str, width: int) -> Bitword:
     idx = characters.index(char)
     char_bitword = f"{idx:b}".rjust(width, "0")
-    return char_bitword[-width:]
+    return [ int(c) for c in char_bitword[-width:] ]
 
 
 # data loader for distributed environment

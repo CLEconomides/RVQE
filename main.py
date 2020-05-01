@@ -24,6 +24,7 @@ import secrets
 class MockSummaryWriter:
     def add_scalar(self, *args, **kwargs):
         pass
+
     def add_text(self, *args, **kwargs):
         pass
 
@@ -121,13 +122,15 @@ class DistributedTrainingEnvironment:
             self._logger = MockSummaryWriter()
 
         if not hasattr(self, "_logger"):
-            self._logger = SummaryWriter(comment=f"{self._original_args.dataset}-{self._checkpoint_prefix}")
+            self._logger = SummaryWriter(
+                comment=f"{self._original_args.dataset}-{self._checkpoint_prefix}"
+            )
 
         return self._logger
 
 
 def dict_to_table(dct) -> str:
-    return "\r".join( f"    {k:>25} {v}" for k, v in dct.items() )
+    return "\r".join(f"    {k:>25} {v}" for k, v in dct.items())
 
 
 def train(shard: int, args):
@@ -148,10 +151,12 @@ def train(shard: int, args):
             epoch_start = 0
             best_validation_loss = None
 
-        environment.logger.add_text( "args", dict_to_table(vars(args)), epoch_start )
+        environment.logger.add_text("args", dict_to_table(vars(args)), epoch_start)
 
-        if original_args.dataset == "simple":
-            dataset = datasets.DataSimpleSentences(shard, **vars(original_args))
+        if original_args.dataset == "simple-seq":
+            dataset = datasets.DataSimpleSequences(shard, **vars(original_args))
+        if original_args.dataset == "simple-quotes":
+            dataset = datasets.DataSimpleQuotes(shard, **vars(original_args))
         elif original_args.dataset == "elman-xor":
             dataset = datasets.DataElmanXOR(shard, **vars(original_args))
         elif original_args.dataset == "elman-letter":
@@ -216,12 +221,13 @@ def train(shard: int, args):
                 print(f"{epoch:04d}/{EPOCHS:04d} {timer() - time_start:5.1f}s  loss={loss:7.3e}")
 
             # log
-            environment.logger.add_scalar("loss_train", loss, epoch)
+            environment.logger.add_scalar("loss/train", loss, epoch)
             environment.logger.add_scalar("time", timer() - time_start, epoch)
 
             # print samples every few epochs
             if epoch % 10 == 0:
                 with torch.no_grad():
+                    # only take the first item from the batch and run it through the network
                     sentence, target = sentences[0], targets[0]
                     measured_probs, measured_seq = rvqe(sentence, postselect_measurement=False)
                     validation_loss = criterion(measured_probs, target[1:])
@@ -235,7 +241,7 @@ def train(shard: int, args):
                         assert len(measured_seqs) == args.num_shards, "gather failed somehow"
 
                         logtext = ""
-                        for i in range(min(3, args.num_shards)):
+                        for i in range(min(args.num_validation_samples, args.num_shards)):
                             seq = measured_seqs[i]
                             sen = sentences[i]
 
@@ -250,27 +256,36 @@ def train(shard: int, args):
                         print(colored(f"validation loss: {validation_loss:7.3e}", "green"))
 
                         # log
-                        environment.logger.add_scalar("loss_validate", validation_loss, epoch)
-                        environment.logger.add_text("validation", logtext, epoch)
+                        environment.logger.add_scalar("loss/validate", validation_loss, epoch)
+                        environment.logger.add_text("validation_samples", logtext, epoch)
 
                         # checkpointing
                         if best_validation_loss is None or validation_loss < best_validation_loss:
                             best_validation_loss = validation_loss
-                            environment.logger.add_scalar("best_loss", best_validation_loss, epoch)
-                            succ = environment.save_checkpoint(
+                            environment.logger.add_scalar(
+                                "loss/validate_best", best_validation_loss, epoch
+                            )
+                            checkpoint = environment.save_checkpoint(
                                 rvqe_ddp,
                                 optimizer,
                                 **{"epoch": epoch, "best_validation_loss": best_validation_loss},
                             )
-                            if succ is not None:
-                                print(colored(f"saved new best checkpoint {succ}", "green"))
+                            if checkpoint is not None:
+                                environment.logger.add_text("checkpoint", checkpoint, epoch)
+                                print(colored(f"saved new best checkpoint {checkpoint}", "green"))
 
                 environment.synchronize()
 
 
 def command_train(args):
     # validate
-    required_workspace = {"simple": 3, "elman-xor": 1, "elman-letter": 6, "shakespeare": 5}
+    required_workspace = {
+        "simple-seq": 3,
+        "simple-quotes": 5,
+        "elman-xor": 1,
+        "elman-letter": 6,
+        "shakespeare": 5,
+    }
     assert args.dataset in required_workspace, "invalid dataset"
     assert (
         required_workspace[args.dataset] < args.workspace
@@ -290,6 +305,24 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="RVQE Training Script", formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
+    parser.add_argument(
+        "--port", metavar="P", type=int, default=12335, help="port for distributed computing",
+    )
+    parser.add_argument(
+        "--num-shards",
+        metavar="N",
+        type=int,
+        default=2,
+        help="number of cores to use for parallel processing",
+    )
+    parser.add_argument(
+        "--num-validation-samples",
+        metavar="VALS",
+        type=int,
+        default=2,
+        help="number of validation samples to draw each 10 epochs",
+    )
+
     subparsers = parser.add_subparsers(help="available commands")
 
     parser_train = subparsers.add_parser("train")
@@ -302,21 +335,11 @@ if __name__ == "__main__":
         "--order", metavar="O", type=int, default=2, help="order of activation function"
     )
     parser_train.add_argument(
-        "--port", metavar="P", type=int, default=12335, help="port for distributed computing",
-    )
-    parser_train.add_argument(
-        "--num-shards",
-        metavar="N",
-        type=int,
-        default=2,
-        help="number of cores to use for parallel processing",
-    )
-    parser_train.add_argument(
         "--dataset",
         metavar="D",
         type=str,
-        default="simple",
-        help="dataset; choose between simple, xor and shakespeare",
+        default="simple-seq",
+        help="dataset; choose between simple-seq, simple-quotes, elman-xor, elman-letter and shakespeare",
     )
     parser_train.add_argument(
         "--sentence-length",
@@ -350,16 +373,6 @@ if __name__ == "__main__":
     parser_resume = subparsers.add_parser("resume")
     parser_resume.set_defaults(func=command_resume)
     parser_resume.add_argument("filename", type=str, help="checkpoint filename")
-    parser_resume.add_argument(
-        "--port", metavar="P", type=int, default=12335, help="port for distributed computing",
-    )
-    parser_resume.add_argument(
-        "--num-shards",
-        metavar="N",
-        type=int,
-        default=2,
-        help="number of cores to use for parallel processing",
-    )
 
     args = parser.parse_args()
     args.func(args)

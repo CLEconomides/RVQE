@@ -32,7 +32,7 @@ class DataShakespeare(DataFactory):
                 for c in line:
                     if not c in DataShakespeare.VALID_CHARACTERS:
                         c = " "
-                    DataShakespeare._data.append(char_to_bitword(c, DataShakespeare.VALID_CHARACTERS), 5)
+                    DataShakespeare._data.append(char_to_bitword(c, DataShakespeare.VALID_CHARACTERS, 5))
 
     
 

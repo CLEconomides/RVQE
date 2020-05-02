@@ -9,10 +9,9 @@ def alternating_sentence(length: int, constants: List[Bitword]) -> List[Bitword]
     return [constants[i % len(constants)] for i in range(length)]
 
 
-
 class DataSimpleSequences(DataFactory):
     def __init__(self, shard: int, num_shards: int, **kwargs):
-        kwargs.update({ "batch_size": max(1, 2 // num_shards) })
+        kwargs.update({"batch_size": max(1, 2 // num_shards)})
         super().__init__(shard, num_shards=num_shards, **kwargs)
 
         sentences = [
@@ -31,9 +30,7 @@ class DataSimpleSequences(DataFactory):
         return 3
 
     def to_human(self, target: tensor, offset: int = 0) -> str:
-        return "  "*offset + " ".join([ str(bitword_to_int(word)) for word in target])
-
-
+        return "  " * offset + " ".join([str(bitword_to_int(word)) for word in target])
 
 
 class DataSimpleQuotes(DataFactory):
@@ -42,7 +39,7 @@ class DataSimpleQuotes(DataFactory):
     assert len(VALID_CHARACTERS) <= 32, "characters should fit into 5 bits"
 
     def __init__(self, shard: int, num_shards: int, **kwargs):
-        kwargs.update({ "batch_size": max(1, 5 // num_shards) })
+        kwargs.update({"batch_size": max(1, 5 // num_shards)})
         super().__init__(shard, num_shards=num_shards, **kwargs)
 
         sentences = [
@@ -53,10 +50,9 @@ class DataSimpleQuotes(DataFactory):
             "the most certain way to succeed is always to try just one more time",  # Thomas Edison
         ]
         maxlen = max(len(sentence) for sentence in sentences)
-        sentences = [ sentence.ljust(maxlen) for sentence in sentences ]
+        sentences = [sentence.ljust(maxlen) for sentence in sentences]
         sentences = [
-            [ char_to_bitword(c, DataSimpleQuotes.VALID_CHARACTERS, 5) for c in sentence ]
-            for sentence in sentences
+            [char_to_bitword(c, DataSimpleQuotes.VALID_CHARACTERS, 5) for c in sentence] for sentence in sentences
         ]
 
         self._batches_data = self._sentences_to_batches(sentences)
@@ -70,5 +66,4 @@ class DataSimpleQuotes(DataFactory):
         return 5
 
     def to_human(self, target: tensor, offset: int = 0) -> str:
-        return " "*offset + "".join([ DataSimpleQuotes.DISPLAY_CHARACTERS[bitword_to_int(c)] for c in target ])
-
+        return " " * offset + "".join([DataSimpleQuotes.DISPLAY_CHARACTERS[bitword_to_int(c)] for c in target])

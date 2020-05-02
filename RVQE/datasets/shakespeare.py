@@ -10,6 +10,7 @@ class DataShakespeare(DataFactory):
     @staticmethod
     def _load_shakespeare():
         import os.path as path
+
         SHAKESPEARE_PATH = path.join(path.dirname(path.abspath(__file__)), "shakespeare.txt")
 
         DataShakespeare._data = []
@@ -20,21 +21,31 @@ class DataShakespeare(DataFactory):
             for i, line in enumerate(f):
                 if i < 245 or i > 124440:  # strip license info
                     continue
-            
+
                 # cleanup
                 line = line.rstrip().lower().replace("\r", "\n")
                 for c, r in [
-                    ("'", ","), (";", ","), ('"', ","), (":", ","),
-                    ("1", "one"), ("2", "two"), ("3", "three"), ("4", "four"), ("5", "five"),
-                    ("6", "six"), ("7", "seven"), ("8", "eight"), ("9", "nine"), ("0", "zero") ]:
+                    ("'", ","),
+                    (";", ","),
+                    ('"', ","),
+                    (":", ","),
+                    ("1", "one"),
+                    ("2", "two"),
+                    ("3", "three"),
+                    ("4", "four"),
+                    ("5", "five"),
+                    ("6", "six"),
+                    ("7", "seven"),
+                    ("8", "eight"),
+                    ("9", "nine"),
+                    ("0", "zero"),
+                ]:
                     line = line.replace(c, r)
 
                 for c in line:
                     if not c in DataShakespeare.VALID_CHARACTERS:
                         c = " "
                     DataShakespeare._data.append(char_to_bitword(c, DataShakespeare.VALID_CHARACTERS, 5))
-
-    
 
     def __init__(self, shard: int, **kwargs):
         super().__init__(shard, **kwargs)
@@ -62,6 +73,6 @@ class DataShakespeare(DataFactory):
 
         # turn into batch
         return self._sentences_to_batches(sentences)[0]
-        
+
     def to_human(self, target: tensor, offset: int = 0) -> str:
-        return " "*offset + "".join([ DataShakespeare.DISPLAY_CHARACTERS[bitword_to_int(c)] for c in target ])
+        return " " * offset + "".join([DataShakespeare.DISPLAY_CHARACTERS[bitword_to_int(c)] for c in target])

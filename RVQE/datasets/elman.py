@@ -19,22 +19,20 @@ class DataElmanXOR(DataFactory):
         Naturally, only the _third_ bit can be predicted; the first and second cannot.
         This makes the training somewhat harder.
     """
+
     def __init__(self, shard: int, **kwargs):
         super().__init__(shard, **kwargs)
 
         # local rng
         self.rng = torch.Generator().manual_seed(8742 + shard)
 
-
     @property
     def _batches(self) -> List[Batch]:
         raise NotImplementedError("next_batch overridden")
 
-
     @property
     def input_width(self) -> tensor:
         return 1
-
 
     def next_batch(self) -> Batch:
         # extract random batch of xor sequences like 011 101 110 000 ...
@@ -44,28 +42,26 @@ class DataElmanXOR(DataFactory):
             sentence = []
             target = []
             for _ in range(0, self.sentence_length, 3):
-                a, b = torch.randint( 0, 2, (2,), generator=self.rng ).tolist()
+                a, b = torch.randint(0, 2, (2,), generator=self.rng).tolist()
                 c = a ^ b
                 sentence += [[a], [b], [c]]
                 target += [0, 0, c]
-            sentence = sentence[:self.sentence_length]
-            target = target[:self.sentence_length]
+            sentence = sentence[: self.sentence_length]
+            target = target[: self.sentence_length]
 
             sentences.append(sentence)
             targets.append(target)
 
         # turn into batch
         return tensor(sentences), tensor(targets)
-        
+
     def to_human(self, target: tensor, offset: int = 0) -> str:
         if offset == 0:  # gold
-            return " ".join([
-                "".join([ str(x[0]) for x in triple.tolist()]) for triple in torch.split(target, 3)
-            ])
+            return " ".join(["".join([str(x[0]) for x in triple.tolist()]) for triple in torch.split(target, 3)])
         elif offset == 1:  # comparison
 
-            small = lambda n: '₀' if n == 0 else '₁'
-            
+            small = lambda n: "₀" if n == 0 else "₁"
+
             out = f" {small(target[0])}{target[1].item()}"
             for triple in torch.split(target[2:], 3):
                 out += " " + small(triple[0])
@@ -74,7 +70,6 @@ class DataElmanXOR(DataFactory):
                 if len(triple) > 2:
                     out += f"{triple[2].item()}"
             return out
-
 
 
 class DataElmanLetter(DataFactory):
@@ -93,11 +88,8 @@ class DataElmanLetter(DataFactory):
         Not all letters can be predicted; but given a consonant,
         the following letters should be predictable.
     """
-    LETTER_LUT = {
-        "b": "ba",
-        "d": "dii",
-        "g": "guuu"
-    }
+
+    LETTER_LUT = {"b": "ba", "d": "dii", "g": "guuu"}
 
     BITWORD_LUT = {
         "b": [1, 0, 1, 0, 0, 1],
@@ -105,7 +97,7 @@ class DataElmanLetter(DataFactory):
         "g": [1, 0, 1, 0, 1, 1],
         "a": [0, 1, 0, 0, 1, 1],
         "i": [0, 1, 0, 1, 0, 1],
-        "u": [0, 1, 0, 1, 1, 1]
+        "u": [0, 1, 0, 1, 1, 1],
     }
 
     TARGET_LUT = {
@@ -114,7 +106,7 @@ class DataElmanLetter(DataFactory):
         "g": 0,
         "a": bitword_to_int(BITWORD_LUT["a"]),
         "i": bitword_to_int(BITWORD_LUT["i"]),
-        "u": bitword_to_int(BITWORD_LUT["u"])
+        "u": bitword_to_int(BITWORD_LUT["u"]),
     }
 
     def __init__(self, shard: int, **kwargs):
@@ -131,21 +123,20 @@ class DataElmanLetter(DataFactory):
     def input_width(self) -> tensor:
         return 6
 
-
     def next_batch(self) -> Batch:
         sentences = []
         targets = []
         while len(sentences) < self.batch_size:
             # create random sequence of b, d, g
-            bdg_seq = torch.randint( 0, 3, (self.sentence_length,), generator=self.rng ).tolist()
-            bdg_seq = [ ("b", "d", "g")[i] for i in bdg_seq ]
+            bdg_seq = torch.randint(0, 3, (self.sentence_length,), generator=self.rng).tolist()
+            bdg_seq = [("b", "d", "g")[i] for i in bdg_seq]
 
             # replace with words
-            bdg_aiu_seq = "".join([ self.LETTER_LUT[c] for c in bdg_seq ])[: self.sentence_length]
+            bdg_aiu_seq = "".join([self.LETTER_LUT[c] for c in bdg_seq])[: self.sentence_length]
 
             # replace with vectors
-            sentence = [ self.BITWORD_LUT[c] for c in bdg_aiu_seq ]
-            target = [ self.TARGET_LUT[c] for c in bdg_aiu_seq ]
+            sentence = [self.BITWORD_LUT[c] for c in bdg_aiu_seq]
+            target = [self.TARGET_LUT[c] for c in bdg_aiu_seq]
 
             sentences.append(sentence)
             targets.append(target)
@@ -160,17 +151,16 @@ class DataElmanLetter(DataFactory):
         19: "a",
         21: "i",
         23: "u",
-         0: " ₀"  # extra marker for target when we expect a consonant
+        0: " ₀",  # extra marker for target when we expect a consonant
     }
-    
+
     def to_human(self, target: tensor, offset: int = 0) -> str:
-        target = [ bitword_to_int(t) for t in target ]
+        target = [bitword_to_int(t) for t in target]
         # start with offset number of blanks
-        out = " "*offset
+        out = " " * offset
 
         # append string
-        out += "".join([ self.INVERSE_TARGET_LUT[c] if c in self.INVERSE_TARGET_LUT else "?" for c in target ])
+        out += "".join([self.INVERSE_TARGET_LUT[c] if c in self.INVERSE_TARGET_LUT else "?" for c in target])
 
         # if we start with a consonant, trim one space off
         return out if target[0] not in [41, 45, 43, 0] else out[1:]
-

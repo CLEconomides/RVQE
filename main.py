@@ -206,6 +206,7 @@ def train(shard: int, args):
             # advance by one training batch
             loss = None
             sentences, targets = dataset.next_batch()
+
             def loss_closure():
                 nonlocal loss  # write to loss outside closure
 
@@ -217,6 +218,7 @@ def train(shard: int, args):
                 loss.backward()
 
                 return loss
+
             optimizer.step(loss_closure)
 
             # print loss each few epochs

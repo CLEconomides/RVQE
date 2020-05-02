@@ -6,7 +6,7 @@ learningrates=( 10.0 5.0 2.0 1.0 0.5 0.2 0.1 0.05 0.02 0.01 0.005 0.002 0.001 0.
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
 
-sleep $[ ($RANDOM % 100) + 1 ]s
+sleep $[ ($RANDOM % 400) + 1 ]s
 
 for optim in "${optimizers[@]}"
 do
@@ -14,12 +14,15 @@ do
     do
         LOCKFILE="$LOCKFILEFOLDER/experiment1-$optim-$lr.lock"
         DONEFILE="$LOCKFILEFOLDER/experiment1-$optim-$lr.done"
+        sync
         if [[ ! -f "$LOCKFILE" && ! -f "$DONEFILE" ]]
         then
             touch "$LOCKFILE"
+            sync
             echo "running $optim with $lr"
             ./main.py --tag experiment1-$optim-$lr --epochs 500 train --optimizer $optim --learning-rate $lr
             touch "$DONEFILE"
+            sync
             sleep 1
             rm "$LOCKFILE"
         else

@@ -12,8 +12,8 @@ for optim in "${optimizers[@]}"
 do
     for lr in "${learningrates[@]}"
     do
-        LOCKFILE="$LOCKFILEFOLDER/experiment1-$optim-$lr.lock"
-        DONEFILE="$LOCKFILEFOLDER/experiment1-$optim-$lr.done"
+        LOCKFILE="$LOCKFILEFOLDER/experiment2-$optim-$lr.lock"
+        DONEFILE="$LOCKFILEFOLDER/experiment2-$optim-$lr.done"
         sync
         if [[ ! -f "$LOCKFILE" && ! -f "$DONEFILE" ]]
         then

@@ -174,6 +174,8 @@ def train(shard: int, args):
             optimizer = torch.optim.Adam(rvqe_ddp.parameters(), lr=original_args.learning_rate)
         elif original_args.optimizer == "rmsprop":
             optimizer = torch.optim.RMSprop(rvqe_ddp.parameters(), lr=original_args.learning_rate)
+        elif original_args.optimizer == "lbfgs":
+            optimizer = torch.optim.LBFGS(rvqe_ddp.parameters(), lr=original_args.learning_rate)
 
         # when in resume mode, load model and optimizer state; otherwise initialize
         if RESUME_MODE:
@@ -202,14 +204,20 @@ def train(shard: int, args):
             time_start = timer()
 
             # advance by one training batch
-            optimizer.zero_grad()
+            loss = None
             sentences, targets = dataset.next_batch()
-            probs, _ = rvqe_ddp(sentences, postselect_measurement=True)
-            if probs.dim() == 3:
-                probs = probs.transpose(1, 2)  # batch x classes x len  to match target with  batch x len
-            loss = criterion(probs, targets[:, 1:])  # the model never predicts the first token
-            loss.backward()
-            optimizer.step()
+            def loss_closure():
+                nonlocal loss  # write to loss outside closure
+
+                optimizer.zero_grad()
+                probs, _ = rvqe_ddp(sentences, postselect_measurement=True)
+                if probs.dim() == 3:
+                    probs = probs.transpose(1, 2)  # batch x classes x len  to match target with  batch x len
+                loss = criterion(probs, targets[:, 1:])  # the model never predicts the first token
+                loss.backward()
+
+                return loss
+            optimizer.step(loss_closure)
 
             # print loss each few epochs
             if epoch % 1 == 0:
@@ -322,7 +330,7 @@ def command_train(args):
     assert (
         required_workspace[args.dataset] < args.workspace
     ), f"need a workspace larger than {required_workspace[args.dataset]} for {args.dataset} dataset"
-    assert args.optimizer in ["sgd", "adam", "rmsprop"], "invalid optimizer"
+    assert args.optimizer in ["sgd", "adam", "rmsprop", "lbfgs"], "invalid optimizer"
 
     torch.multiprocessing.spawn(train, args=(args,), nprocs=args.num_shards, join=True)
 

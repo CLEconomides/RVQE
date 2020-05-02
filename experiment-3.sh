@@ -23,7 +23,7 @@ do
                 touch "$LOCKFILE"
                 sync
                 echo "running order $o, stages $s, workspace $w"
-                ./main.py --num-shards 2 --tag experiment3-$o-$s-$w --epochs 500 train --dataset elman-xor --stages $s --workspace $w --order $o --optimizer rmsprop --learning-rate 0.2 --batch-size 1
+                ./main.py --num-shards 2 --tag experiment3-$o-$s-$w --epochs 500 train --dataset elman-xor --stages $s --workspace $w --order $o --optimizer rmsprop --learning-rate 0.15 --batch-size 1
                 touch "$DONEFILE"
                 sync
                 sleep 1

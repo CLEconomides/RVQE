@@ -193,10 +193,10 @@ def train(shard: int, args):
 
         if RESUME_MODE:
             print(
-                f"⏩ Resuming session! Model has {len(list(rvqe_ddp.parameters()))} parameters, and we start at epoch {epoch_start} with best validation loss {best_validation_loss:7.3e}."
+                f"⏩  Resuming session! Model has {len(list(rvqe_ddp.parameters()))} parameters, and we start at epoch {epoch_start} with best validation loss {best_validation_loss:7.3e}."
             )
         else:
-            print(f"⏩ New session! Model has {len(list(rvqe_ddp.parameters()))} parameters.")
+            print(f"⏩  New session! Model has {len(list(rvqe_ddp.parameters()))} parameters.")
 
         time_start = timer()
         for epoch in range(epoch_start, args.epochs):
@@ -312,11 +312,12 @@ def train(shard: int, args):
             {k: v for k, v in vars(original_args).items() if isinstance(v, (int, float, str, bool, torch.Tensor))},
             {
                 "hparams/epoch": epoch,
+                "hparams/num_parameters": len(list(rvqe_ddp.parameters())),
                 "hparams/validate_best": best_validation_loss,
                 "hparams/cer_best": best_character_error_rate,
             },
         )
-        print(colored(f"DONE. Written final checkpoint to {checkpoint}", "green"))
+        print(f"⏩  DONE. Written final checkpoint to {checkpoint}")
 
 
 def command_train(args):

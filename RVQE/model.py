@@ -24,10 +24,7 @@ class RVQECell(nn.Module):
             *[
                 nn.Sequential(
                     UnitaryLayer(workspace_size),
-                    *[
-                        QuantumNeuronLayer(workspace_size, outlane, order)
-                        for outlane in range(workspace_size)
-                    ],
+                    *[QuantumNeuronLayer(workspace_size, outlane, order) for outlane in range(workspace_size)],
                 )
                 for _ in range(stages)
             ]
@@ -63,9 +60,7 @@ class RVQE(nn.Module):
             return torch.stack(batch_probs), torch.stack(batch_measured_seq)
 
         # normal call
-        assert (
-            inputs.dim() == 2
-        ), "inputs have to have dimension 3 (1st batch) or 2 (list of int lists)"
+        assert inputs.dim() == 2, "inputs have to have dimension 3 (1st batch) or 2 (list of int lists)"
 
         num_qubits = self.cell.num_qubits
         input_size = len(inputs[0])
@@ -76,9 +71,7 @@ class RVQE(nn.Module):
         measured_seq = []
 
         for inpt, trgt in pairwise(inputs):
-            assert (
-                len(inpt) == input_size and len(trgt) == input_size
-            ), "inputs all have to be the same length"
+            assert len(inpt) == input_size and len(trgt) == input_size, "inputs all have to be the same length"
 
             p, psi = self.cell.forward(psi, inpt)
             probs.append(p)

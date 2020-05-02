@@ -19,9 +19,7 @@ def test_ket():
     assert equal(ket("01"), tensor([0.0, 1.0, 0.0, 0.0]))
     assert equal(ket("10"), tensor([0.0, 0.0, 1.0, 0.0]))
     assert equal(ket("11"), tensor([0.0, 0.0, 0.0, 1.0]))
-    assert approx_equal(
-        ket("0+1"), tensor([0.0000, 0.7071, 0.0000, 0.7071, 0.0000, 0.0000, 0.0000, 0.0000]),
-    )
+    assert approx_equal(ket("0+1"), tensor([0.0000, 0.7071, 0.0000, 0.7071, 0.0000, 0.0000, 0.0000, 0.0000]),)
     assert equal(normalize(torch.ones(4).reshape(2, 2)), tensor([0.5, 0.5, 0.5, 0.5]))
 
 
@@ -67,31 +65,13 @@ def test_gates():
         apply(rYLayer(0).U, ket0(3), [0], verbose=True),
         apply(rYLayer(2).U, ket0(3), [2], verbose=True).transpose(0, 2),
     )
-    assert equal(
-        crYLayer(0, 1).forward(ket("00")), ket("00")
-    ), "controlled gate has no action if control is 0"
-    assert not equal(
-        crYLayer(1, 0).forward(ket("0+")), ket("0+")
-    ), "controlled gate acts if control is 1"
-    foo = apply(
-        crYLayer(0, 1, initial_θ=1.0).U,
-        apply(HLayer(0).U, ket0(2), [0], verbose=True),
-        [1, 0],
-        verbose=True,
-    )
-    assert approx_equal(
-        foo, tensor([0.7071, 0.0000, 0.7071, 0.0000])
-    ), "crYLayer has no action if control is 0"
+    assert equal(crYLayer(0, 1).forward(ket("00")), ket("00")), "controlled gate has no action if control is 0"
+    assert not equal(crYLayer(1, 0).forward(ket("0+")), ket("0+")), "controlled gate acts if control is 1"
+    foo = apply(crYLayer(0, 1, initial_θ=1.0).U, apply(HLayer(0).U, ket0(2), [0], verbose=True), [1, 0], verbose=True,)
+    assert approx_equal(foo, tensor([0.7071, 0.0000, 0.7071, 0.0000])), "crYLayer has no action if control is 0"
     assert equal(
         cmiYLayer(0, 1).to_mat(),
-        tensor(
-            [
-                [1.0, 0.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 1.0],
-                [0.0, 0.0, -1.0, 0.0],
-            ]
-        ),
+        tensor([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0], [0.0, 0.0, -1.0, 0.0],]),
     ), "controlled-iY"
     foo = tensor([[1, 2], [3, 4]], dtype=torch.float)
     assert equal(cmiYLayer(0, 1)(foo), tensor([1.0, 2.0, -4.0, 3.0]))
@@ -100,9 +80,7 @@ def test_gates():
 
 def test_parameter_sharing():
     foo = rYLayer(2)
-    assert (
-        len(list(nn.Sequential(foo, foo.T).named_parameters())) == 1
-    ), "we expect there to be only one parameter"
+    assert len(list(nn.Sequential(foo, foo.T).named_parameters())) == 1, "we expect there to be only one parameter"
     assert (
         len(list(nn.Sequential(foo, rYLayer(2)).named_parameters())) == 2
     ), "there have to be two separate parameters here"
@@ -115,40 +93,24 @@ def test_backwards_call():
 
 def test_compatibility_with_qiskit():
     psi = normalize(tensor([1.0, 0.0, 1, 1.0, 0, 0.0, 0, 1.0]).reshape(2, 2, 2))
-    assert equal(
-        probabilities(psi),
-        tensor([0.2500, 0.0000, 0.2500, 0.2500, 0.0000, 0.0000, 0.0000, 0.2500]),
-    )
+    assert equal(probabilities(psi), tensor([0.2500, 0.0000, 0.2500, 0.2500, 0.0000, 0.0000, 0.0000, 0.2500]),)
 
     layer1 = crYLayer(1, 2, initial_θ=pi / 4)
     layer2 = rYLayer(2, initial_θ=pi / 8)
     layer3 = cmiYLayer(2, 0)
 
     psi = layer1(psi)
-    assert approx_equal(
-        psi, tensor([0.5000, 0.0000, 0.2706, 0.6533, 0.0000, 0.0000, -0.1913, 0.4619])
-    )
+    assert approx_equal(psi, tensor([0.5000, 0.0000, 0.2706, 0.6533, 0.0000, 0.0000, -0.1913, 0.4619]))
     psi = layer2(psi)
-    assert approx_equal(
-        psi, tensor([0.4904, 0.0975, 0.1379, 0.6935, 0.0000, 0.0000, -0.2778, 0.4157])
-    )
+    assert approx_equal(psi, tensor([0.4904, 0.0975, 0.1379, 0.6935, 0.0000, 0.0000, -0.2778, 0.4157]))
     psi = layer3(psi)
-    assert approx_equal(
-        psi, tensor([0.4904, 0.0000, 0.1379, -0.4157, 0.0000, 0.0975, -0.2778, 0.6935])
-    )
+    assert approx_equal(psi, tensor([0.4904, 0.0000, 0.1379, -0.4157, 0.0000, 0.0975, -0.2778, 0.6935]))
     psi = layer2.T(psi)
-    assert approx_equal(
-        psi, tensor([0.4810, -0.0957, 0.0542, -0.4347, 0.0190, 0.0957, -0.1371, 0.7344])
-    )
+    assert approx_equal(psi, tensor([0.4810, -0.0957, 0.0542, -0.4347, 0.0190, 0.0957, -0.1371, 0.7344]))
     psi = layer1.T(psi)
-    assert approx_equal(
-        psi, tensor([0.4810, -0.0957, -0.1163, -0.4223, 0.0190, 0.0957, 0.1543, 0.7310])
-    )
+    assert approx_equal(psi, tensor([0.4810, -0.0957, -0.1163, -0.4223, 0.0190, 0.0957, 0.1543, 0.7310]))
     psi = PostselectLayer(2, on=0).forward(psi)
-    assert approx_equal(
-        probabilities(psi),
-        tensor([0.8599, 0.0000, 0.0502, 0.0000, 0.0013, 0.0000, 0.0885, 0.0000]),
-    )
+    assert approx_equal(probabilities(psi), tensor([0.8599, 0.0000, 0.0502, 0.0000, 0.0013, 0.0000, 0.0885, 0.0000]),)
 
 
 # RVQE
@@ -167,9 +129,7 @@ from .data import *
 
 
 def test_data():
-    assert equal(
-        bitword_to_onehot(tensor([0, 0, 1]), 3), tensor([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
-    )
+    assert equal(bitword_to_onehot(tensor([0, 0, 1]), 3), tensor([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),)
     assert bitword_to_int(tensor([0, 1, 1])) == 3
     assert int_to_bitword(12, 10) == [0, 0, 0, 0, 0, 0, 1, 1, 0, 0]
     assert bitword_to_str([1, 1, 1, 0]) == "1110"

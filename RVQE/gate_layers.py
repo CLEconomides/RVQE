@@ -44,9 +44,7 @@ class GateLayer(nn.Module):
         n = num_operator_qubits(self.U)
         basis = list(itertools.product("01", repeat=n))
 
-        out = tensor(
-            [[dot(ket("".join(x)), self.forward(ket("".join(y)))) for x in basis] for y in basis]
-        )
+        out = tensor([[dot(ket("".join(x)), self.forward(ket("".join(y)))) for x in basis] for y in basis])
 
         return out
 
@@ -78,10 +76,7 @@ class rYLayer(GateLayer):
         # note: these matrices are TRANSPOSED! in this notation
         θ = self.θ
         return torch.stack(
-            [
-                torch.stack([(0.5 * θ).cos(), (-0.5 * θ).sin()]),
-                torch.stack([(0.5 * θ).sin(), (0.5 * θ).cos()]),
-            ]
+            [torch.stack([(0.5 * θ).cos(), (-0.5 * θ).sin()]), torch.stack([(0.5 * θ).sin(), (0.5 * θ).cos()]),]
         )
 
 
@@ -117,12 +112,7 @@ class cmiYLayer(GateLayer):
 
         # note: these matrices are TRANSPOSED! in this notation
         self.U = tensor(
-            [
-                [1.0, 0.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 1.0],
-                [0.0, 0.0, -1.0, 0.0],
-            ]
+            [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0], [0.0, 0.0, -1.0, 0.0],]
         ).T.reshape(2, 2, 2, 2)
 
 

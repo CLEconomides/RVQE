@@ -59,9 +59,7 @@ _EINSUM_ALPHABET = "abcdefghijklmnopqrstuvwxyz"
 
 def squish_idcs_up(idcs: str) -> str:
     sorted_idcs = sorted(idcs)
-    return "".join(
-        [_EINSUM_ALPHABET[-i - 1] for i in [len(idcs) - 1 - sorted_idcs.index(c) for c in idcs]]
-    )
+    return "".join([_EINSUM_ALPHABET[-i - 1] for i in [len(idcs) - 1 - sorted_idcs.index(c) for c in idcs]])
 
 
 @functools.lru_cache(maxsize=10 ** 6)
@@ -74,14 +72,10 @@ def einsum_indices(m: int, n: int, target_lanes: Tuple[int]) -> Tuple[str, str, 
     )
     idcs_target = _EINSUM_ALPHABET[:n]
 
-    assert len(idcs_op) + len(idcs_target) < len(
-        _EINSUM_ALPHABET
-    ), "too few indices for torch's einsum"
+    assert len(idcs_op) + len(idcs_target) < len(_EINSUM_ALPHABET), "too few indices for torch's einsum"
 
     idcs_result = ""
-    idcs_op_lut = dict(
-        zip(idcs_op[m:], idcs_op[:m])
-    )  # lookup table from operator's right to operator's left indices
+    idcs_op_lut = dict(zip(idcs_op[m:], idcs_op[:m]))  # lookup table from operator's right to operator's left indices
     for c in idcs_target:
         if c in idcs_op_lut:
             idcs_result += idcs_op_lut[c]

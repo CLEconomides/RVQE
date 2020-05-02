@@ -28,6 +28,9 @@ class MockSummaryWriter:
     def add_text(self, *args, **kwargs):
         pass
 
+    def add_hparams(self, *args, **kwargs):
+        pass
+
 
 class DistributedTrainingEnvironment:
     def __init__(self, shard: int, args):
@@ -40,9 +43,7 @@ class DistributedTrainingEnvironment:
         if hasattr(args, "dataset"):
             self._checkpoint_prefix = f"-{args.tag}-{args.dataset}--{secrets.token_hex(3)}"
 
-        print(
-            f"[{shard}] Hello from shard {shard} in a world of size {self.world_size}! Happy training!"
-        )
+        print(f"[{shard}] Hello from shard {shard} in a world of size {self.world_size}! Happy training!")
 
     def __enter__(self):
         os.environ["MASTER_ADDR"] = "localhost"
@@ -86,7 +87,7 @@ class DistributedTrainingEnvironment:
 
     CHECKPOINT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "checkpoints/")
 
-    def save_checkpoint(self, model, optimizer, **kwargs):
+    def save_checkpoint(self, model, optimizer, extra_tag: str = "", **kwargs):
         """
             we don't check whether this is only called from shard 0
         """
@@ -100,9 +101,7 @@ class DistributedTrainingEnvironment:
             }
         )
 
-        filename = (
-            f"checkpoint-{self._checkpoint_prefix}--" + time.strftime("%Y-%m-%d--%H-%M-%S") + ".tar"
-        )
+        filename = f"checkpoint-{self._checkpoint_prefix}-{extra_tag}-" + time.strftime("%Y-%m-%d--%H-%M-%S") + ".tar"
         path = os.path.join(self.CHECKPOINT_PATH, filename)
 
         torch.save(kwargs, path)
@@ -144,10 +143,12 @@ def train(shard: int, args):
             original_args = store["_original_args"]
             epoch_start = store["epoch"]
             best_validation_loss = store["best_validation_loss"]
+            best_character_error_rate = store["best_character_error_rate"]
         else:
             original_args = args
             epoch_start = 0
             best_validation_loss = None
+            best_character_error_rate = None
 
         environment.logger.add_text("args", dict_to_table(vars(args)), epoch_start)
 
@@ -163,11 +164,7 @@ def train(shard: int, args):
             dataset = datasets.DataShakespeare(**vars(original_args))
 
         # create model and distribute
-        rvqe = RVQE(
-            workspace_size=original_args.workspace,
-            stages=original_args.stages,
-            order=original_args.order,
-        )
+        rvqe = RVQE(workspace_size=original_args.workspace, stages=original_args.stages, order=original_args.order,)
         rvqe_ddp = DistributedDataParallel(rvqe)
 
         # create optimizer
@@ -209,25 +206,21 @@ def train(shard: int, args):
             sentences, targets = dataset.next_batch()
             probs, _ = rvqe_ddp(sentences, postselect_measurement=True)
             if probs.dim() == 3:
-                probs = probs.transpose(
-                    1, 2
-                )  # batch x classes x len  to match target with  batch x len
+                probs = probs.transpose(1, 2)  # batch x classes x len  to match target with  batch x len
             loss = criterion(probs, targets[:, 1:])  # the model never predicts the first token
             loss.backward()
             optimizer.step()
 
             # print loss each few epochs
             if epoch % 1 == 0:
-                print(
-                    f"{epoch:04d}/{args.epochs:04d} {timer() - time_start:5.1f}s  loss={loss:7.3e}"
-                )
+                print(f"{epoch:04d}/{args.epochs:04d} {timer() - time_start:5.1f}s  loss={loss:7.3e}")
 
             # log
             environment.logger.add_scalar("loss/train", loss, epoch)
             environment.logger.add_scalar("time", timer() - time_start, epoch)
 
-            # print samples every few epochs
-            if epoch % 10 == 0:
+            # print samples every few epochs or the last round
+            if epoch % 10 == 0 or epoch == args.epochs - 1:
                 with torch.no_grad():
                     # only take the first item from the batch and run it through the network
                     sentence, target = sentences[0], targets[0]
@@ -271,27 +264,49 @@ def train(shard: int, args):
 
                         # log
                         environment.logger.add_scalar("loss/validate", validation_loss, epoch)
-                        environment.logger.add_scalar(
-                            "character_error_rate", character_error_rate, epoch
-                        )
+                        environment.logger.add_scalar("accuracy/cer_current", character_error_rate, epoch)
                         environment.logger.add_text("validation_samples", logtext, epoch)
+
+                        if best_character_error_rate is None or character_error_rate > best_character_error_rate:
+                            best_character_error_rate = character_error_rate
+                            environment.logger.add_scalar("accuracy/cer_best", best_character_error_rate, epoch)
 
                         # checkpointing
                         if best_validation_loss is None or validation_loss < best_validation_loss:
                             best_validation_loss = validation_loss
-                            environment.logger.add_scalar(
-                                "loss/validate_best", best_validation_loss, epoch
-                            )
+                            environment.logger.add_scalar("loss/validate_best", best_validation_loss, epoch)
                             checkpoint = environment.save_checkpoint(
                                 rvqe_ddp,
                                 optimizer,
-                                **{"epoch": epoch, "best_validation_loss": best_validation_loss},
+                                **{
+                                    "epoch": epoch,
+                                    "best_validation_loss": best_validation_loss,
+                                    "best_character_error_rate": best_character_error_rate,
+                                },
                             )
                             if checkpoint is not None:
                                 environment.logger.add_text("checkpoint", checkpoint, epoch)
                                 print(f"saved new best checkpoint {checkpoint}")
 
+                        # END shard 0 tasks
+                    # END validation
+
                 environment.synchronize()
+                # END training loop
+
+        # Training done
+        checkpoint = environment.save_checkpoint(
+            rvqe_ddp, optimizer, extra_tag="final", **{"epoch": epoch, "best_validation_loss": best_validation_loss},
+        )
+        environment.logger.add_hparams(
+            {k: v for k, v in vars(original_args).items() if isinstance(v, (int, float, str, bool, torch.Tensor))},
+            {
+                "hparams/epoch": epoch,
+                "hparams/validate_best": best_validation_loss,
+                "hparams/cer_best": best_character_error_rate,
+            },
+        )
+        print(colored(f"DONE. Written final checkpoint to {checkpoint}", "green"))
 
 
 def command_train(args):
@@ -326,11 +341,7 @@ if __name__ == "__main__":
         "--port", metavar="P", type=int, default=12335, help="port for distributed computing",
     )
     parser.add_argument(
-        "--num-shards",
-        metavar="N",
-        type=int,
-        default=2,
-        help="number of cores to use for parallel processing",
+        "--num-shards", metavar="N", type=int, default=2, help="number of cores to use for parallel processing",
     )
     parser.add_argument(
         "--num-validation-samples",
@@ -339,26 +350,18 @@ if __name__ == "__main__":
         default=2,
         help="number of validation samples to draw each 10 epochs",
     )
-    parser.add_argument(
-        "--tag", metavar="TAG", type=str, default="", help="tag for checkpoints and logs"
-    )
-    parser.add_argument(
-        "--epochs", metavar="EP", type=int, default=5000, help="number of learning epochs"
-    )
+    parser.add_argument("--tag", metavar="TAG", type=str, default="", help="tag for checkpoints and logs")
+    parser.add_argument("--epochs", metavar="EP", type=int, default=5000, help="number of learning epochs")
 
     subparsers = parser.add_subparsers(help="available commands")
 
-    parser_train = subparsers.add_parser(
-        "train", formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
+    parser_train = subparsers.add_parser("train", formatter_class=argparse.ArgumentDefaultsHelpFormatter,)
     parser_train.set_defaults(func=command_train)
     parser_train.add_argument(
         "--workspace", metavar="W", type=int, default=5, help="qubits to use as workspace",
     )
     parser_train.add_argument("--stages", metavar="S", type=int, default=2, help="RVQE cell stages")
-    parser_train.add_argument(
-        "--order", metavar="O", type=int, default=2, help="order of activation function"
-    )
+    parser_train.add_argument("--order", metavar="O", type=int, default=2, help="order of activation function")
     parser_train.add_argument(
         "--dataset",
         metavar="D",
@@ -367,33 +370,19 @@ if __name__ == "__main__":
         help="dataset; choose between simple-seq, simple-quotes, elman-xor, elman-letter and shakespeare",
     )
     parser_train.add_argument(
-        "--sentence-length",
-        metavar="SL",
-        type=int,
-        default=20,
-        help="sentence length for data generators",
+        "--sentence-length", metavar="SL", type=int, default=20, help="sentence length for data generators",
     )
     parser_train.add_argument(
         "--batch-size", metavar="B", type=int, default=1, help="batch size",
     )
     parser_train.add_argument(
-        "--optimizer",
-        metavar="OPT",
-        type=str,
-        default="adam",
-        help="optimizer; one of sgd, adam or rmsprop",
+        "--optimizer", metavar="OPT", type=str, default="adam", help="optimizer; one of sgd, adam or rmsprop",
     )
     parser_train.add_argument(
-        "--learning-rate",
-        metavar="LR",
-        type=float,
-        default="0.003",
-        help="learning rate for optimizer",
+        "--learning-rate", metavar="LR", type=float, default="0.003", help="learning rate for optimizer",
     )
 
-    parser_resume = subparsers.add_parser(
-        "resume", formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
+    parser_resume = subparsers.add_parser("resume", formatter_class=argparse.ArgumentDefaultsHelpFormatter,)
     parser_resume.set_defaults(func=command_resume)
     parser_resume.add_argument("filename", type=str, help="checkpoint filename")
 

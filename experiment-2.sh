@@ -20,7 +20,7 @@ do
             touch "$LOCKFILE"
             sync
             echo "running $optim with $lr"
-            ./main.py --tag experiment2-$optim-$lr --epochs 500 train --dataset elman-xor --stages 4 --optimizer $optim --learning-rate $lr
+            ./main.py --tag experiment2-$optim-$lr --epochs 500 train --dataset elman-xor --stages 4 --optimizer $optim --learning-rate $lr --sentence-length 21 --batch-size 3
             touch "$DONEFILE"
             sync
             sleep 1

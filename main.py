@@ -230,7 +230,7 @@ def train(shard: int, args):
             environment.logger.add_scalar("time", timer() - time_start, epoch)
 
             # print samples every few epochs or the last round
-            if epoch % 2 == 0 or epoch == args.epochs - 1:
+            if epoch % 10 == 0 or epoch == args.epochs - 1:
                 with torch.no_grad():
                     # run entire batch through the network without postselecting measurements
                     measured_probs, measured_seqs = rvqe(sentences, postselect_measurement=False)

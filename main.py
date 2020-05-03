@@ -215,9 +215,7 @@ def train(shard: int, args):
                 probs, _ = rvqe_ddp(sentences, postselect_measurement=True)
                 if probs.dim() == 3:
                     probs = probs.transpose(1, 2)  # batch x classes x len  to match target with  batch x len, i.e. len has to be last
-                print(f"probs {probs.shape}  targets {targets.shape}")
                 _probs, _targets = dataset.filter(probs, targets[:, 1:])
-                print(f"probs {_probs.shape}  targets {_targets.shape}")
                 loss = criterion(_probs, _targets)  # the model never predicts the first token
                 loss.backward()
 
@@ -239,7 +237,9 @@ def train(shard: int, args):
                     # only take the first item from the batch and run it through the network
                     sentence, target = sentences[0], targets[0]
                     measured_probs, measured_seq = rvqe(sentence, postselect_measurement=False)
+                    print(f"probs {measured_probs.shape}  target {target.shape}")
                     _prob, _target = dataset.filter(measured_probs, target[1:])
+                    print(f"probs {_prob.shape}  target {_target.shape}")
                     validation_loss = criterion(_prob, _target)
 
                     # collect in main shard
@@ -268,11 +268,13 @@ def train(shard: int, args):
                         total = 0
                         correct = 0
                         for seq, sen in zip(measured_seqs, sentences):
-                            for wa, wb in zip(seq, sen[1:]):
+                            seq = dataset.filter_sentence(seq)
+                            sen = dataset.filter_sentence(sen[1:])
+                            for wa, wb in zip(seq, sen):
                                 total += 1
                                 correct += 1 if torch.all(wa == wb) else 0
 
-                        character_error_rate = correct / total
+                        character_error_rate = 1 - correct / total
 
                         print(colored(f"validation loss:       {validation_loss:7.3e}", "green"))
                         print(colored(f"character error rate:  {character_error_rate:.3f}", "green"))
@@ -282,7 +284,7 @@ def train(shard: int, args):
                         environment.logger.add_scalar("accuracy/cer_current", character_error_rate, epoch)
                         environment.logger.add_text("validation_samples", logtext, epoch)
 
-                        if best_character_error_rate is None or character_error_rate > best_character_error_rate:
+                        if best_character_error_rate is None or character_error_rate < best_character_error_rate:
                             best_character_error_rate = character_error_rate
                             environment.logger.add_scalar("accuracy/cer_best", best_character_error_rate, epoch)
 

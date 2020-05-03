@@ -104,3 +104,6 @@ class DataFactory(ABC):
 
     def filter(self, sentence: tensor, output: tensor) -> Tuple[tensor, tensor]:
         return sentence, output
+
+    def filter_sentence(self, sentence: tensor) -> tensor:
+        return sentence

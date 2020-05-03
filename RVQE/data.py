@@ -101,3 +101,6 @@ class DataFactory(ABC):
             indenting by offset characters
         """
         pass
+
+    def filter(self, sentence: tensor, output: tensor) -> Tuple[tensor, tensor]:
+        return sentence, output

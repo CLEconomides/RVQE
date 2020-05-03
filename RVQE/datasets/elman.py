@@ -71,6 +71,23 @@ class DataElmanXOR(DataFactory):
                     out += f"{triple[2].item()}"
             return out
 
+    def filter(self, probs: tensor, targets: tensor) -> Tuple[tensor, tensor]:
+        """
+            2d tensor of probabilities (classes x len) when measured and corresponding 1d tensor of targets (len), or
+            batch thereof (batch x classes x len) and (batch x len), respectively, i.e. len last
+
+            we expect these to be offset by 1 from a proper output, i.e.
+            01 110 000 011
+             |   |   |   |
+        """
+        if probs.dim() == 3:
+            assert targets.dim() == 2, "discovered batch but target dimensions don't work"
+            return probs[:, :, 1::3], targets[:, 1::3]
+        else:
+            assert probs.dim() == 2 and targets.dim() == 1, "no batch discovered but dimensions don't work"
+            return probs[:, 1::3], targets[1::3]
+
+
 
 class DataElmanLetter(DataFactory):
     """

@@ -209,12 +209,16 @@ def train(shard: int, args):
 
             def loss_closure():
                 nonlocal loss  # write to loss outside closure
+                nonlocal targets
 
                 optimizer.zero_grad()
                 probs, _ = rvqe_ddp(sentences, postselect_measurement=True)
                 if probs.dim() == 3:
-                    probs = probs.transpose(1, 2)  # batch x classes x len  to match target with  batch x len
-                loss = criterion(probs, targets[:, 1:])  # the model never predicts the first token
+                    probs = probs.transpose(1, 2)  # batch x classes x len  to match target with  batch x len, i.e. len has to be last
+                print(f"probs {probs.shape}  targets {targets.shape}")
+                _probs, _targets = dataset.filter(probs, targets[:, 1:])
+                print(f"probs {_probs.shape}  targets {_targets.shape}")
+                loss = criterion(_probs, _targets)  # the model never predicts the first token
                 loss.backward()
 
                 return loss
@@ -235,7 +239,8 @@ def train(shard: int, args):
                     # only take the first item from the batch and run it through the network
                     sentence, target = sentences[0], targets[0]
                     measured_probs, measured_seq = rvqe(sentence, postselect_measurement=False)
-                    validation_loss = criterion(measured_probs, target[1:])
+                    _prob, _target = dataset.filter(measured_probs, target[1:])
+                    validation_loss = criterion(_prob, _target)
 
                     # collect in main shard
                     sentences = environment.gather(sentence)

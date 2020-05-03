@@ -57,7 +57,9 @@ class RVQE(nn.Module):
                 probs, measured_seq = self.forward(inpt, postselect_measurement)
                 batch_probs.append(probs)
                 batch_measured_seq.append(measured_seq)
-            return torch.stack(batch_probs), torch.stack(batch_measured_seq)
+
+            # we transpose the batch_probs such that the len dimension comes last
+            return torch.stack(batch_probs).transpose(1, 2), torch.stack(batch_measured_seq)
 
         # normal call
         assert inputs.dim() == 2, "inputs have to have dimension 3 (1st batch) or 2 (list of int lists)"
@@ -89,4 +91,6 @@ class RVQE(nn.Module):
             # reset qubits
             psi = BitFlipLayer([i for i in input_lanes if measure[i]]).forward(psi)
 
-        return torch.stack(probs), torch.stack(measured_seq)
+        probs = torch.stack(probs)
+        measured_seq = torch.stack(measured_seq)
+        return probs, measured_seq

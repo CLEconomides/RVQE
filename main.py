@@ -213,8 +213,6 @@ def train(shard: int, args):
 
                 optimizer.zero_grad()
                 probs, _ = rvqe_ddp(sentences, postselect_measurement=True)
-                if probs.dim() == 3:
-                    probs = probs.transpose(1, 2)  # batch x classes x len  to match target with  batch x len, i.e. len has to be last
                 _probs, _targets = dataset.filter(probs, targets[:, 1:])
                 loss = criterion(_probs, _targets)  # the model never predicts the first token
                 loss.backward()
@@ -232,23 +230,24 @@ def train(shard: int, args):
             environment.logger.add_scalar("time", timer() - time_start, epoch)
 
             # print samples every few epochs or the last round
-            if epoch % 10 == 0 or epoch == args.epochs - 1:
+            if epoch % 2 == 0 or epoch == args.epochs - 1:
                 with torch.no_grad():
-                    # only take the first item from the batch and run it through the network
-                    sentence, target = sentences[0], targets[0]
-                    measured_probs, measured_seq = rvqe(sentence, postselect_measurement=False)
-                    print(f"probs {measured_probs.shape}  target {target.shape}")
-                    _prob, _target = dataset.filter(measured_probs, target[1:])
-                    print(f"probs {_prob.shape}  target {_target.shape}")
-                    validation_loss = criterion(_prob, _target)
+                    # run entire batch through the network without postselecting measurements
+                    measured_probs, measured_seqs = rvqe(sentences, postselect_measurement=False)
+                    _probs, _targets = dataset.filter(measured_probs, targets[:, 1:])
+                    validation_loss = criterion(_probs, _targets)
 
                     # collect in main shard
-                    sentences = environment.gather(sentence)
-                    measured_seqs = environment.gather(measured_seq)
+                    sentences = environment.gather(sentences)
+                    measured_seqs = environment.gather(measured_seqs)
                     validation_loss = environment.reduce(validation_loss, ReduceOp.SUM)
 
                     if shard == 0:
-                        assert len(measured_seqs) == args.num_shards, "gather failed somehow"
+                        sentences = torch.cat(sentences)
+                        measured_seqs = torch.cat(measured_seqs)
+                        validation_loss /= args.num_shards
+
+                        assert len(measured_seqs) == args.num_shards * args.batch_size, "gather failed somehow"
 
                         logtext = ""
                         for i in range(min(args.num_validation_samples, args.num_shards)):
@@ -262,7 +261,6 @@ def train(shard: int, args):
                             print(text)
                             logtext += "    " + text + "\r\n"
 
-                        validation_loss /= args.num_shards
 
                         # character error rate
                         total = 0

@@ -14,7 +14,7 @@ from RVQE.model import RVQE
 from RVQE.quantum import tensor
 from RVQE import datasets
 
-from math import pi
+from math import pi, log
 
 from termcolor import colored
 
@@ -186,7 +186,9 @@ def train(shard: int, args):
                 nn.init.uniform_(p, a=0.0, b=2 * pi)
 
         # cross entropy loss
-        criterion = nn.CrossEntropyLoss()
+        _criterion = nn.CrossEntropyLoss()
+        BEST_LOSS_POSSIBLE = -1 + log(2 ** dataset.input_width - 1.)  # see formula for CrossEntropyLoss
+        criterion = lambda *args, **kwargs: _criterion(*args, **kwargs) - BEST_LOSS_POSSIBLE
 
         # wait for all shards to be happy
         environment.synchronize()
@@ -246,6 +248,10 @@ def train(shard: int, args):
                         sentences = torch.cat(sentences)
                         measured_seqs = torch.cat(measured_seqs)
                         validation_loss /= args.num_shards
+
+                        print(sentences.shape)
+                        print(measured_seqs.shape)
+                        print(validation_loss)
 
                         assert len(measured_seqs) == args.num_shards * args.batch_size, "gather failed somehow"
 

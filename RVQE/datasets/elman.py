@@ -64,7 +64,8 @@ class DataElmanXOR(DataFactory):
 
             out = f" {small(target[0])}{target[1].item()}"
             for triple in torch.split(target[2:], 3):
-                out += " " + small(triple[0])
+                if len(triple) > 0:
+                    out += " " + small(triple[0])
                 if len(triple) > 1:
                     out += small(triple[1])
                 if len(triple) > 2:

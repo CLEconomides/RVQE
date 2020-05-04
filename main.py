@@ -250,10 +250,6 @@ def train(shard: int, args):
                         measured_seqs = torch.cat(measured_seqs)
                         validation_loss /= args.num_shards
 
-                        print(sentences.shape)
-                        print(measured_seqs.shape)
-                        print(validation_loss)
-
                         assert len(measured_seqs) == args.num_shards * args.batch_size, "gather failed somehow"
 
                         logtext = ""
@@ -310,11 +306,17 @@ def train(shard: int, args):
                                 environment.logger.add_text("checkpoint", checkpoint, epoch)
                                 print(f"saved new best checkpoint {checkpoint}")
 
-                        # END shard 0 tasks
-                    # END validation
+                    # ENDIF shard 0 tasks
 
-                environment.synchronize()
-                # END training loop
+                # ENDWITH torch.no_grad
+
+                if args.stop_at_loss is not None and args.stop_at_loss > validation_loss:
+                    break  # breaks out of training loop
+
+            # ENDIF validation
+
+            environment.synchronize()
+        # END training loop
 
         # Training done
         checkpoint = environment.save_checkpoint(
@@ -375,6 +377,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--tag", metavar="TAG", type=str, default="", help="tag for checkpoints and logs")
     parser.add_argument("--epochs", metavar="EP", type=int, default=5000, help="number of learning epochs")
+    parser.add_argument("--stop-at-loss", metavar="SL", type=float, default=None, help="stop at this validation loss")
 
     subparsers = parser.add_subparsers(help="available commands")
 

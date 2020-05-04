@@ -14,7 +14,7 @@ from RVQE.model import RVQE
 from RVQE.quantum import tensor
 from RVQE import datasets
 
-from math import pi, log
+import math
 
 from termcolor import colored
 
@@ -183,11 +183,11 @@ def train(shard: int, args):
             optimizer.load_state_dict(store["optimizer_state_dict"])
         else:
             for p in rvqe_ddp.parameters():
-                nn.init.uniform_(p, a=0.0, b=2 * pi)
+                nn.init.uniform_(p, a=0.0, b=2 * math.pi)
 
         # cross entropy loss
         _criterion = nn.CrossEntropyLoss()
-        BEST_LOSS_POSSIBLE = -1 + log(2 ** dataset.input_width)  # see formula for CrossEntropyLoss
+        BEST_LOSS_POSSIBLE = -1 + math.log(2 ** dataset.input_width-1 + math.e)  # see formula for CrossEntropyLoss
         criterion = lambda *args, **kwargs: _criterion(*args, **kwargs) - BEST_LOSS_POSSIBLE
         print(colored(f"best possible loss: {BEST_LOSS_POSSIBLE:7.3e}", "magenta"), "automatically subtracted")
 

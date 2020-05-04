@@ -187,8 +187,9 @@ def train(shard: int, args):
 
         # cross entropy loss
         _criterion = nn.CrossEntropyLoss()
-        BEST_LOSS_POSSIBLE = -1 + log(2 ** dataset.input_width - 1.)  # see formula for CrossEntropyLoss
+        BEST_LOSS_POSSIBLE = -1 + log(2 ** dataset.input_width)  # see formula for CrossEntropyLoss
         criterion = lambda *args, **kwargs: _criterion(*args, **kwargs) - BEST_LOSS_POSSIBLE
+        print(colored(f"best possible loss: {BEST_LOSS_POSSIBLE:7.3e}", "magenta"), "automatically subtracted")
 
         # wait for all shards to be happy
         environment.synchronize()

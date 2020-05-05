@@ -15,15 +15,15 @@ do
     do
         for optim in "${optimizers[@]}"
         do
-            LOCKFILE="$LOCKFILEFOLDER/experiment2-$seed-$optim-$lr.lock"
-            DONEFILE="$LOCKFILEFOLDER/experiment2-$seed-$optim-$lr.done"
+            LOCKFILE="$LOCKFILEFOLDER/experiment2-$sd-$optim-$lr.lock"
+            DONEFILE="$LOCKFILEFOLDER/experiment2-$sd-$optim-$lr.done"
             sync
             if [[ ! -f "$LOCKFILE" && ! -f "$DONEFILE" ]]
             then
                 touch "$LOCKFILE"
                 sync
                 echo "running $optim with $lr"
-                ./main.py --tag experiment2-$seed-$optim-$lr --seed $sd --num-shards 3 --epochs 500 train --dataset elman-xor --stages 3 --optimizer $optim --learning-rate $lr --sentence-length 3 --batch-size 4
+                ./main.py --tag experiment2-$sd-$optim-$lr --seed $sd --num-shards 3 --epochs 500 train --dataset elman-xor --stages 3 --optimizer $optim --learning-rate $lr --sentence-length 3 --batch-size 4
                 touch "$DONEFILE"
                 sync
                 sleep 1

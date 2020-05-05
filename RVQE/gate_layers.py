@@ -69,7 +69,6 @@ class rYLayer(GateLayer):
 
         self.lanes = [target_lane]
         self.θ = nn.Parameter(tensor(initial_θ, requires_grad=True))
-        self.register_parameter("θ", self.θ)
 
     @property
     def U(self) -> tensor:
@@ -81,25 +80,24 @@ class rYLayer(GateLayer):
 
 
 class crYLayer(GateLayer):
-    def __init__(self, control_lane: int, target_lane: int, initial_θ: float = 1.0):
+    def __init__(self, control_lane: int, target_lane: int, initial_φ: float = 1.0):
         super().__init__()
 
         self.lanes = [control_lane, target_lane]
-        self.θ = nn.Parameter(tensor(initial_θ, requires_grad=True))
-        self.register_parameter("θ", self.θ)
+        self.φ = nn.Parameter(tensor(initial_φ, requires_grad=True))
 
     @property
     def U(self) -> tensor:
         # note: these matrices are TRANSPOSED! in this notation
-        θ = self.θ
+        φ = self.φ
         return torch.stack(
             [
                 torch.stack([tensor([1.0, 0.0]), tensor([0.0, 0.0])]),
                 torch.stack([tensor([0.0, 1.0]), tensor([0.0, 0.0])]),
                 torch.stack(
-                    [tensor([0.0, 0.0]), torch.stack([(0.5 * θ).cos(), (-0.5 * θ).sin()]),]
+                    [tensor([0.0, 0.0]), torch.stack([(0.5 * φ).cos(), (-0.5 * φ).sin()]),]
                 ),  # TRANSPOSED again, see comment above
-                torch.stack([tensor([0.0, 0.0]), torch.stack([(0.5 * θ).sin(), (0.5 * θ).cos()]),]),
+                torch.stack([tensor([0.0, 0.0]), torch.stack([(0.5 * φ).sin(), (0.5 * φ).cos()]),]),
             ]
         ).reshape(2, 2, 2, 2)
 

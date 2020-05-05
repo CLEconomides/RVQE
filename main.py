@@ -184,7 +184,8 @@ def train(shard: int, args):
         else:
             for name, p in rvqe_ddp.named_parameters():
                 if name[-1:] == "θ":  # rY
-                    nn.init.normal_(p, mean=0.0, std=.005)
+                    pass # leave at their constant initial value
+                    #nn.init.normal_(p, mean=0.0, std=.005)
                 elif name[-1:] == "φ":  # crY
                     nn.init.normal_(p, mean=0.0, std=.5)
                 else:

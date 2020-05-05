@@ -172,7 +172,7 @@ def train(shard: int, args):
         if original_args.optimizer == "sgd":
             optimizer = torch.optim.SGD(rvqe_ddp.parameters(), lr=original_args.learning_rate)
         elif original_args.optimizer == "adam":
-            optimizer = torch.optim.Adam(rvqe_ddp.parameters(), lr=original_args.learning_rate)
+            optimizer = torch.optim.AdamW(rvqe_ddp.parameters(), lr=original_args.learning_rate)
         elif original_args.optimizer == "rmsprop":
             optimizer = torch.optim.RMSprop(rvqe_ddp.parameters(), lr=original_args.learning_rate)
         elif original_args.optimizer == "lbfgs":

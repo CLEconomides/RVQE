@@ -37,6 +37,7 @@ class DistributedTrainingEnvironment:
         self.shard = shard
         self.world_size = args.num_shards
         self.port = args.port
+        self.seed = args.seed
         self._original_args = args
         # the hex tokens are different in different shards; so checkpoint from the same shard always
         # this has to be set only initially, as it'll be restored on resume
@@ -54,7 +55,7 @@ class DistributedTrainingEnvironment:
 
         # Explicitly setting seed to make sure that models created in two processes
         # start from same random weights and biases.
-        torch.manual_seed(7856)
+        torch.manual_seed(self.seed)
 
         return self
 
@@ -384,6 +385,7 @@ if __name__ == "__main__":
     parser.add_argument("--tag", metavar="TAG", type=str, default="", help="tag for checkpoints and logs")
     parser.add_argument("--epochs", metavar="EP", type=int, default=5000, help="number of learning epochs")
     parser.add_argument("--stop-at-loss", metavar="SL", type=float, default=None, help="stop at this validation loss")
+    parser.add_argument("--seed", metavar="SEED", type=int, default=82727, help="random seed for parameter initialization")
 
     subparsers = parser.add_subparsers(help="available commands")
 

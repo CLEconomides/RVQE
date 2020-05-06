@@ -185,8 +185,7 @@ def train(shard: int, args):
         else:
             for name, p in rvqe_ddp.named_parameters():
                 if name[-1:] == "θ":  # rY
-                    pass # leave at their constant initial value
-                    #nn.init.normal_(p, mean=0.0, std=.005)
+                    nn.init.normal_(p, mean=0.0, std=.005)
                 elif name[-1:] == "φ":  # crY
                     nn.init.normal_(p, mean=0.0, std=.5)
                 else:
@@ -410,7 +409,7 @@ if __name__ == "__main__":
         "--batch-size", metavar="B", type=int, default=1, help="batch size",
     )
     parser_train.add_argument(
-        "--optimizer", metavar="OPT", type=str, default="adam", help="optimizer; one of sgd, adam or rmsprop",
+        "--optimizer", metavar="OPT", type=str, default="rmsprop", help="optimizer; one of sgd, adam or rmsprop",
     )
     parser_train.add_argument(
         "--learning-rate", metavar="LR", type=float, default="0.003", help="learning rate for optimizer",

@@ -1,6 +1,8 @@
-from .quantum import apply, tensor, num_operator_qubits, normalize, dot, ket
+from typing import Union, List, Tuple
+
+from .quantum import apply, num_operator_qubits, normalize, dot, ket, ctrlMat
 import torch
-from torch import nn
+from torch import nn, tensor
 
 import copy
 from math import sqrt
@@ -80,26 +82,24 @@ class rYLayer(GateLayer):
 
 
 class crYLayer(GateLayer):
-    def __init__(self, control_lane: int, target_lane: int, initial_φ: float = 1.0):
+    def __init__(self, control_lane: Union[int, List[int], Tuple[int]], target_lane: int, initial_φ: float = 1.0):
         super().__init__()
 
-        self.lanes = [control_lane, target_lane]
+        if isinstance(control_lane, int):
+            self.lanes = [control_lane, target_lane]
+        else:  # assume a list of control lanes given
+            self.lanes = [*control_lane, target_lane]
+
         self.φ = nn.Parameter(tensor(initial_φ, requires_grad=True))
 
     @property
     def U(self) -> tensor:
         # note: these matrices are TRANSPOSED! in this notation
         φ = self.φ
-        return torch.stack(
-            [
-                torch.stack([tensor([1.0, 0.0]), tensor([0.0, 0.0])]),
-                torch.stack([tensor([0.0, 1.0]), tensor([0.0, 0.0])]),
-                torch.stack(
-                    [tensor([0.0, 0.0]), torch.stack([(0.5 * φ).cos(), (-0.5 * φ).sin()]),]
-                ),  # TRANSPOSED again, see comment above
-                torch.stack([tensor([0.0, 0.0]), torch.stack([(0.5 * φ).sin(), (0.5 * φ).cos()]),]),
-            ]
-        ).reshape(2, 2, 2, 2)
+        rY = torch.stack(
+            [torch.stack([(0.5 * φ).cos(), (-0.5 * φ).sin()]), torch.stack([(0.5 * φ).sin(), (0.5 * φ).cos()]),]
+        )
+        return ctrlMat(rY, len(self.lanes) - 1)
 
 
 class cmiYLayer(GateLayer):

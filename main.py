@@ -185,15 +185,15 @@ def train(shard: int, args):
         else:
             for name, p in rvqe_ddp.named_parameters():
                 if name[-1:] == "θ":  # rY
-                    nn.init.normal_(p, mean=0.0, std=.005)
+                    nn.init.normal_(p, mean=0.0, std=0.005)
                 elif name[-1:] == "φ":  # crY
-                    nn.init.normal_(p, mean=0.0, std=.5)
+                    nn.init.normal_(p, mean=0.0, std=0.5)
                 else:
                     raise NotImplementedError(f"{name} unknown parameter name for initialization")
 
         # cross entropy loss
         _criterion = nn.CrossEntropyLoss()
-        BEST_LOSS_POSSIBLE = -1 + math.log(2 ** dataset.input_width-1 + math.e)  # see formula for CrossEntropyLoss
+        BEST_LOSS_POSSIBLE = -1 + math.log(2 ** dataset.input_width - 1 + math.e)  # see formula for CrossEntropyLoss
         criterion = lambda *args, **kwargs: _criterion(*args, **kwargs) - BEST_LOSS_POSSIBLE
         print(colored(f"best possible loss: {BEST_LOSS_POSSIBLE:7.3e}", "magenta"), "automatically subtracted")
 
@@ -269,7 +269,6 @@ def train(shard: int, args):
                             text = f"pred = { dataset.to_human(seq, offset=1) }"
                             print(text)
                             logtext += "    " + text + "\r\n"
-
 
                         # character error rate
                         total = 0
@@ -384,7 +383,9 @@ if __name__ == "__main__":
     parser.add_argument("--tag", metavar="TAG", type=str, default="", help="tag for checkpoints and logs")
     parser.add_argument("--epochs", metavar="EP", type=int, default=5000, help="number of learning epochs")
     parser.add_argument("--stop-at-loss", metavar="SL", type=float, default=None, help="stop at this validation loss")
-    parser.add_argument("--seed", metavar="SEED", type=int, default=82727, help="random seed for parameter initialization")
+    parser.add_argument(
+        "--seed", metavar="SEED", type=int, default=82727, help="random seed for parameter initialization"
+    )
 
     subparsers = parser.add_subparsers(help="available commands")
 

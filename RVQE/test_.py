@@ -51,7 +51,7 @@ def test_gates():
     assert equal(HLayer(0)(ket("1")), normalize(ket("0") - ket("1")))
     assert approx_equal(rYLayer(0, -pi / 2).to_mat(), tensor([[0.7071, -0.7071], [0.7071, 0.7071]]))
     assert approx_equal(
-        crYLayer(0, 1, initial_θ=pi / 2).to_mat(),
+        crYLayer(0, 1, initial_φ=pi / 2).to_mat(),
         tensor(
             [
                 [1.0000, 0.0000, 0.0000, 0.0000],
@@ -67,7 +67,9 @@ def test_gates():
     )
     assert equal(crYLayer(0, 1).forward(ket("00")), ket("00")), "controlled gate has no action if control is 0"
     assert not equal(crYLayer(1, 0).forward(ket("0+")), ket("0+")), "controlled gate acts if control is 1"
-    foo = apply(crYLayer(0, 1, initial_θ=1.0).U, apply(HLayer(0).U, ket0(2), [0], verbose=True), [1, 0], verbose=True,)
+    foo = apply(
+        crYLayer([0], 1, initial_φ=1.0).U, apply(HLayer(0).U, ket0(2), [0], verbose=True), [1, 0], verbose=True,
+    )
     assert approx_equal(foo, tensor([0.7071, 0.0000, 0.7071, 0.0000])), "crYLayer has no action if control is 0"
     assert equal(
         cmiYLayer(0, 1).to_mat(),
@@ -95,7 +97,7 @@ def test_compatibility_with_qiskit():
     psi = normalize(tensor([1.0, 0.0, 1, 1.0, 0, 0.0, 0, 1.0]).reshape(2, 2, 2))
     assert equal(probabilities(psi), tensor([0.2500, 0.0000, 0.2500, 0.2500, 0.0000, 0.0000, 0.0000, 0.2500]),)
 
-    layer1 = crYLayer(1, 2, initial_θ=pi / 4)
+    layer1 = crYLayer([1], 2, initial_φ=pi / 4)
     layer2 = rYLayer(2, initial_θ=pi / 8)
     layer3 = cmiYLayer(2, 0)
 

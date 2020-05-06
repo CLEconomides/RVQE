@@ -24,7 +24,10 @@ class RVQECell(nn.Module):
             *[
                 nn.Sequential(
                     UnitaryLayer(workspace_size),
-                    *[QuantumNeuronLayer(workspace_size, outlane, order) for outlane in reversed(range(workspace_size))],
+                    *[
+                        QuantumNeuronLayer(workspace_size, outlane, order)
+                        for outlane in reversed(range(workspace_size))
+                    ],
                 )
                 for _ in range(stages)
             ]

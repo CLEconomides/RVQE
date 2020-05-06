@@ -110,3 +110,18 @@ def apply(op: tensor, psi: tensor, target_lanes: List[int], verbose: bool = Fals
 def dot(a: tensor, b: tensor) -> tensor:
     idcs_einsum = f"{_EINSUM_ALPHABET[:len(a.shape)]},{_EINSUM_ALPHABET[:len(b.shape)]}->"
     return torch.einsum(idcs_einsum, a, b)
+
+
+def ctrlMat(op: tensor, num_control_lanes: int) -> tensor:
+    if num_control_lanes == 0:
+        return op
+    n = num_operator_qubits(op)
+    A = torch.eye(2 ** n)
+    AB = torch.zeros(2 ** n, 2 ** n)
+    BA = torch.zeros(2 ** n, 2 ** n)
+    return ctrlMat(
+        torch.cat([torch.cat([A, AB], dim=0), torch.cat([BA, op.reshape(2 ** n, -1)], dim=0)], dim=1).reshape(
+            *[2] * (2 * (n + 1))
+        ),
+        num_control_lanes - 1,
+    )

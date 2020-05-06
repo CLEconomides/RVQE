@@ -29,7 +29,7 @@ do
                 sleep 1
                 rm "$LOCKFILE"
             else
-                echo "skipping $optim with $lr and seed $seed"
+                echo "skipping $optim with $lr and seed $sd"
             fi
         done
     done

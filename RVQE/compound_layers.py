@@ -2,6 +2,19 @@ from .quantum import *
 from .gate_layers import *
 
 
+import itertools
+
+
+def powerset(iterable, min_el: int, max_el: int):
+    "powerset([1,2,3], 3) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
+    s = list(iterable)
+    return itertools.chain.from_iterable(itertools.combinations(s, r) for r in range(min_el, max_el))
+
+
+def index_sets_without(numbers: List[int], exclude: List[int], m: int):
+    return powerset(set(numbers) - set(exclude), min_el=1, max_el=m + 1)
+
+
 def _T_gate_list(gates: List[GateLayer]) -> List[GateLayer]:
     return [g.T for g in reversed(gates)]
 
@@ -27,7 +40,7 @@ class UnitaryLayer(CompoundLayer):
     def __init__(self, workspace_size: int):
         super().__init__()
         self.gates = nn.Sequential(
-            *[rYLayer(i, initial_θ=0.) for i in range(workspace_size)]
+            *[rYLayer(i, initial_θ=0.0) for i in range(workspace_size)]
         )  # we reverse the order so to have the same lane order as in qiskit
 
     def extra_repr(self):
@@ -35,7 +48,7 @@ class UnitaryLayer(CompoundLayer):
 
 
 class QuantumNeuronLayer(CompoundLayer):
-    def __init__(self, workspace_size: int, outlane: int, order: int = 2):
+    def __init__(self, workspace_size: int, outlane: int, order: int = 2, degree: int = 2):
         super().__init__()
 
         self.workspace_size = workspace_size
@@ -46,11 +59,9 @@ class QuantumNeuronLayer(CompoundLayer):
 
         # precompute parametrized gates as they need to share weights
         self._param_gates = []
-        for i in range(self.workspace_size):
-            if i == self.outlane:
-                continue
-            self._param_gates.append(crYLayer(i, self.ancilla_idcs[0]))
-        self._param_gates.append(rYLayer(self.ancilla_idcs[0], initial_θ=pi/4))
+        for idcs in index_sets_without(range(self.workspace_size), [self.outlane], degree):
+            self._param_gates.append(crYLayer(idcs, self.ancilla_idcs[0]))
+        self._param_gates.append(rYLayer(self.ancilla_idcs[0], initial_θ=pi / 4))
 
         # assemble circuit gate layers
         _gates = []
@@ -62,9 +73,7 @@ class QuantumNeuronLayer(CompoundLayer):
 
     def static_gates(self, idx: int, dagger: bool) -> List[GateLayer]:
         static_lanes = [*self.ancilla_idcs, self.outlane]
-        static_gates = [
-            cmiYLayer(static_lanes[idx], static_lanes[idx + 1])
-        ]
+        static_gates = [cmiYLayer(static_lanes[idx], static_lanes[idx + 1])]
 
         return static_gates if not dagger else _T_gate_list(static_gates)
 

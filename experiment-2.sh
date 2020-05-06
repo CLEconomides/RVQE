@@ -24,10 +24,18 @@ do
                 sync
                 echo "running $optim with $lr"
                 ./main.py --tag experiment2-$sd-$optim-$lr --seed $sd --num-shards 3 --epochs 500 train --dataset elman-xor --stages 3 --optimizer $optim --learning-rate $lr --sentence-length 3 --batch-size 4
-                touch "$DONEFILE"
-                sync
-                sleep 1
-                rm "$LOCKFILE"
+                status=$?
+                
+                if test $status -eq 0
+                then
+                    touch "$DONEFILE"
+                    sync
+                    sleep 1
+                    rm "$LOCKFILE"
+                else
+                    echo "failure running $optim with $lr."
+                    rm "$LOCKFILE"
+                fi                
             else
                 echo "skipping $optim with $lr and seed $sd"
             fi

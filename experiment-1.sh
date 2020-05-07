@@ -17,23 +17,18 @@ do
         DONEFILE="$LOCKFILEFOLDER/experiment1-$optim-$lr.done"
         sync
         
-        if [[ ! -f "$DONEFILE" ]]
-        then
-            # acquire lock
-            if ( set -o noclobber; echo "locked" > "$LOCKFILE") 2> /dev/null; then
-                trap 'rm -f "$LOCKFILE"; exit $?' INT TERM EXIT
-
-                echo "running $optim with $lr"
-                ./main.py --tag experiment1-$optim-$lr --epochs 500 train --optimizer $optim --learning-rate $lr
-                touch "$DONEFILE"
-                sync
-                sleep 1
-
-                trap "exit" INT
-                rm -f "$LOCKFILE"
-            else
-                echo "skipping $optim with $lr"
-            fi
+        if [[ ! -f "$DONEFILE" ]] ; then
+            {
+                if flock -n 200 ; then
+                    echo "running $optim with $lr"
+                    ./main.py --tag experiment1-$optim-$lr --epochs 500 train --optimizer $optim --learning-rate $lr
+                    touch "$DONEFILE"
+                    sync
+                    sleep 1
+                else
+                    echo "skipping $optim with $lr"
+                fi
+            } 200>"$LOCKFILE"
         fi
     done
 done

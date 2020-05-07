@@ -30,22 +30,30 @@ class RVQECell(nn.Module):
         self.workspace = list(range(order, order + workspace_size))
         self.inout = list(range(order + workspace_size, order + workspace_size + input_size))
 
-        self.input_layer = nn.Sequential(*[
-            QuantumNeuronLayer(workspace=self.workspace + self.inout, outlane=out, ancillas=self.ancillas) for out in self.workspace
-        ])
-        self.kernel_layer = nn.Sequential(*[
-            nn.Sequential(
-                UnitaryLayer(self.workspace),
-                *[
-                    QuantumNeuronLayer(workspace=self.workspace + self.inout, outlane=out, ancillas=self.ancillas)
-                    for out in self.workspace
-                ],
-            )
-            for _ in range(stages)
-        ])
-        self.output_layer = nn.Sequential(*[
-            QuantumNeuronLayer(workspace=self.workspace + self.inout, outlane=out, ancillas=self.ancillas) for out in self.inout
-        ])
+        self.input_layer = nn.Sequential(
+            *[
+                QuantumNeuronLayer(workspace=self.workspace + self.inout, outlane=out, ancillas=self.ancillas)
+                for out in self.workspace
+            ]
+        )
+        self.kernel_layer = nn.Sequential(
+            *[
+                nn.Sequential(
+                    UnitaryLayer(self.workspace),
+                    *[
+                        QuantumNeuronLayer(workspace=self.workspace + self.inout, outlane=out, ancillas=self.ancillas)
+                        for out in self.workspace
+                    ],
+                )
+                for _ in range(stages)
+            ]
+        )
+        self.output_layer = nn.Sequential(
+            *[
+                QuantumNeuronLayer(workspace=self.workspace + self.inout, outlane=out, ancillas=self.ancillas)
+                for out in self.inout
+            ]
+        )
 
     @property
     def num_qubits(self) -> int:
@@ -58,10 +66,13 @@ class RVQECell(nn.Module):
 
         bitflip_layer = self.bitflip_for(input)
 
+        # input and kernel layers don't write to the inout lanes, it is read only
         psi = bitflip_layer.forward(psi)
         psi = self.input_layer.forward(psi)
-        #psi = bitflip_layer.forward(psi)
         psi = self.kernel_layer.forward(psi)
+
+        # reset inout lanes to 000, then write output
+        psi = bitflip_layer.forward(psi)
         psi = self.output_layer.forward(psi)
 
         return probabilities(psi, self.inout), psi

@@ -398,7 +398,7 @@ if __name__ == "__main__":
     parser_train = subparsers.add_parser("train", formatter_class=argparse.ArgumentDefaultsHelpFormatter,)
     parser_train.set_defaults(func=command_train)
     parser_train.add_argument(
-        "--workspace", metavar="W", type=int, default=5, help="qubits to use as workspace",
+        "--workspace", metavar="W", type=int, default=3, help="qubits to use as workspace",
     )
     parser_train.add_argument("--stages", metavar="S", type=int, default=2, help="RVQE cell stages")
     parser_train.add_argument("--order", metavar="O", type=int, default=2, help="order of activation function")

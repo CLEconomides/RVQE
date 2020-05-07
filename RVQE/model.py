@@ -37,14 +37,14 @@ class RVQECell(nn.Module):
             nn.Sequential(
                 UnitaryLayer(self.workspace),
                 *[
-                    QuantumNeuronLayer(workspace=self.workspace, outlane=out, ancillas=self.ancillas)
+                    QuantumNeuronLayer(workspace=self.workspace + self.inout, outlane=out, ancillas=self.ancillas)
                     for out in self.workspace
                 ],
             )
             for _ in range(stages)
         ])
         self.output_layer = nn.Sequential(*[
-            QuantumNeuronLayer(workspace=self.workspace, outlane=out, ancillas=self.ancillas) for out in self.inout
+            QuantumNeuronLayer(workspace=self.workspace + self.inout, outlane=out, ancillas=self.ancillas) for out in self.inout
         ])
 
     @property
@@ -60,7 +60,7 @@ class RVQECell(nn.Module):
 
         psi = bitflip_layer.forward(psi)
         psi = self.input_layer.forward(psi)
-        psi = bitflip_layer.forward(psi)
+        #psi = bitflip_layer.forward(psi)
         psi = self.kernel_layer.forward(psi)
         psi = self.output_layer.forward(psi)
 

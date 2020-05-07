@@ -165,7 +165,12 @@ def train(shard: int, args):
             dataset = datasets.DataShakespeare(**vars(original_args))
 
         # create model and distribute
-        rvqe = RVQE(workspace_size=original_args.workspace, stages=original_args.stages, order=original_args.order,)
+        rvqe = RVQE(
+            workspace_size=original_args.workspace,
+            input_size=dataset.input_width,
+            stages=original_args.stages,
+            order=original_args.order,
+        )
         rvqe_ddp = DistributedDataParallel(rvqe)
 
         # create optimizer
@@ -185,7 +190,8 @@ def train(shard: int, args):
         else:
             for name, p in rvqe_ddp.named_parameters():
                 if name[-1:] == "θ":  # rY
-                    nn.init.normal_(p, mean=0.0, std=0.005)
+                    pass
+                    #nn.init.normal_(p, mean=0.0, std=0.005)
                 elif name[-1:] == "φ":  # crY
                     nn.init.normal_(p, mean=0.0, std=0.5)
                 else:

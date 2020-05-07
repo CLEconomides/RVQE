@@ -37,31 +37,40 @@ class PostselectManyLayer(CompoundLayer):
 
 
 class UnitaryLayer(CompoundLayer):
-    def __init__(self, workspace_size: int):
+    def __init__(self, workspace: List[int]):
         super().__init__()
+        self.workspace = workspace
         self.gates = nn.Sequential(
-            *[rYLayer(i, initial_θ=0.0) for i in range(workspace_size)]
+            *[rYLayer(i, initial_θ=0.0) for i in workspace]
         )  # we reverse the order so to have the same lane order as in qiskit
 
     def extra_repr(self):
-        return f"workspace_size={len(self.gates)}"
+        return f"workspace={self.workspace}"
 
 
 class QuantumNeuronLayer(CompoundLayer):
-    def __init__(self, workspace_size: int, outlane: int, order: int = 2, degree: int = 2):
+    def __init__(self, workspace: List[int], outlane: int, ancillas: List[int], degree: int = 2):
+        """
+            workspace from which to take values, write onto outlane; and use ancillas for intermediate computation
+            conditions: outlane _can_ be within workspace, but not in ancillas; and workspace and ancillas have to be disjoint
+        """
+        assert outlane not in ancillas and (
+            set(workspace).isdisjoint(ancillas)
+        ), "outlane, workspace and ancillas have to be disjoint"
+        assert len(workspace) >= 1 and len(ancillas) >= 1, "both workspace and ancillas have to be nonempty"
+
         super().__init__()
 
-        self.workspace_size = workspace_size
+        self.workspace = workspace
+        self.ancillas = ancillas
         self.outlane = outlane
-        self.order = order
-
-        self.ancilla_idcs = ancilla_idcs = list(range(workspace_size, workspace_size + order))
+        self.order = len(ancillas)
 
         # precompute parametrized gates as they need to share weights
         self._param_gates = []
-        for idcs in index_sets_without(range(self.workspace_size), [self.outlane], degree):
-            self._param_gates.append(crYLayer(idcs, self.ancilla_idcs[0]))
-        self._param_gates.append(rYLayer(self.ancilla_idcs[0], initial_θ=pi / 4))
+        for idcs in index_sets_without(workspace, [outlane], degree):
+            self._param_gates.append(crYLayer(idcs, ancillas[0]))
+        self._param_gates.append(rYLayer(ancillas[0], initial_θ=pi / 4))
 
         # assemble circuit gate layers
         _gates = []
@@ -72,7 +81,7 @@ class QuantumNeuronLayer(CompoundLayer):
         return self._param_gates if not dagger else _T_gate_list(self._param_gates)
 
     def static_gates(self, idx: int, dagger: bool) -> List[GateLayer]:
-        static_lanes = [*self.ancilla_idcs, self.outlane]
+        static_lanes = [*self.ancillas, self.outlane]
         static_gates = [cmiYLayer(static_lanes[idx], static_lanes[idx + 1])]
 
         return static_gates if not dagger else _T_gate_list(static_gates)
@@ -89,8 +98,8 @@ class QuantumNeuronLayer(CompoundLayer):
             self._append_gates_recursive(_gates, recidx - 1, dagger=True)
 
         # postselect measurement outcome 0 on corresponding ancilla
-        ancilla_to_postselect_on = self.ancilla_idcs[recidx]
+        ancilla_to_postselect_on = self.ancillas[recidx]
         _gates.append(PostselectLayer(ancilla_to_postselect_on, on=0))
 
     def extra_repr(self):
-        return f"workspace_size={self.workspace_size}, outlane={self.outlane}, order={self.order}"
+        return f"workspace={self.workspace}, outlane={self.outlane}, ancillas={self.ancillas} (order={self.order})"

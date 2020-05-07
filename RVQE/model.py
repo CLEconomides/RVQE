@@ -6,7 +6,7 @@ from .compound_layers import (
     BitFlipLayer,
     PostselectManyLayer,
 )
-from .quantum import tensor, ket0, probabilities
+from .quantum import tensor, ket0, probabilities, num_state_qubits
 from .data import pairwise, int_to_bitword, Bitword
 
 import torch
@@ -14,42 +14,66 @@ from torch import nn
 
 
 class RVQECell(nn.Module):
-    def __init__(self, workspace_size: int, stages: int, order: int = 2):
+    def __init__(self, workspace_size: int, input_size: int, stages: int, order: int = 2):
+        """
+            by default we set up the qubit indices to be
+            ancillas, workspace, input
+        """
+        assert workspace_size >= 1 and input_size >= 1 and stages >= 1 and order >= 1, "all parameters have to be >= 1"
+
         super().__init__()
 
-        self.workspace_size = workspace_size
+        self.stages = stages
         self.order = order
 
-        self.gates = nn.Sequential(
-            *[
-                nn.Sequential(
-                    UnitaryLayer(workspace_size),
-                    *[
-                        QuantumNeuronLayer(workspace_size, outlane, order)
-                        for outlane in reversed(range(workspace_size))
-                    ],
-                )
-                for _ in range(stages)
-            ]
-        )
+        self.ancillas = list(range(0, order))
+        self.workspace = list(range(order, order + workspace_size))
+        self.inout = list(range(order + workspace_size, order + workspace_size + input_size))
+
+        self.input_layer = nn.Sequential(*[
+            QuantumNeuronLayer(workspace=self.workspace + self.inout, outlane=out, ancillas=self.ancillas) for out in self.workspace
+        ])
+        self.kernel_layer = nn.Sequential(*[
+            nn.Sequential(
+                UnitaryLayer(self.workspace),
+                *[
+                    QuantumNeuronLayer(workspace=self.workspace, outlane=out, ancillas=self.ancillas)
+                    for out in self.workspace
+                ],
+            )
+            for _ in range(stages)
+        ])
+        self.output_layer = nn.Sequential(*[
+            QuantumNeuronLayer(workspace=self.workspace, outlane=out, ancillas=self.ancillas) for out in self.inout
+        ])
 
     @property
     def num_qubits(self) -> int:
-        return self.workspace_size + self.order
+        return len(self.ancillas) + len(self.workspace) + len(self.inout)
 
     def forward(self, psi: tensor, input: Bitword) -> Tuple[tensor, tensor]:
         # we assume psi has its input lanes reset to 0
-        input_lanes = range(len(input))
-        psi = BitFlipLayer([i for i in input_lanes if input[i] == 1]).forward(psi)
-        psi = self.gates.forward(psi)
+        assert len(input) == len(self.inout), "wrong input size given"
+        assert num_state_qubits(psi) == self.num_qubits, "state given does not have the right size"
 
-        return probabilities(psi, input_lanes), psi
+        bitflip_layer = self.bitflip_for(input)
+
+        psi = bitflip_layer.forward(psi)
+        psi = self.input_layer.forward(psi)
+        psi = bitflip_layer.forward(psi)
+        psi = self.kernel_layer.forward(psi)
+        psi = self.output_layer.forward(psi)
+
+        return probabilities(psi, self.inout), psi
+
+    def bitflip_for(self, input: Bitword) -> BitFlipLayer:
+        return BitFlipLayer([lane for i, lane in enumerate(self.inout) if input[i] == 1])
 
 
 class RVQE(nn.Module):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__()
-        self.cell = RVQECell(*args, **kwargs)
+        self.cell = RVQECell(**kwargs)
 
     def forward(self, inputs: tensor, postselect_measurement: bool = True) -> Tuple[tensor, list]:
         # batched call; return stacked result
@@ -67,17 +91,11 @@ class RVQE(nn.Module):
         # normal call
         assert inputs.dim() == 2, "inputs have to have dimension 3 (1st batch) or 2 (list of int lists)"
 
-        num_qubits = self.cell.num_qubits
-        input_size = len(inputs[0])
-        input_lanes = range(input_size)
-
-        psi = ket0(num_qubits)
+        psi = ket0(self.cell.num_qubits)
         probs = []
         measured_seq = []
 
         for inpt, trgt in pairwise(inputs):
-            assert len(inpt) == input_size and len(trgt) == input_size, "inputs all have to be the same length"
-
             p, psi = self.cell.forward(psi, inpt)
             probs.append(p)
 
@@ -86,13 +104,13 @@ class RVQE(nn.Module):
                 measure = trgt
             else:
                 output_distribution = torch.distributions.Categorical(probs=p)
-                measure = tensor(int_to_bitword(output_distribution.sample(), width=input_size))
+                measure = tensor(int_to_bitword(output_distribution.sample(), width=len(self.cell.inout)))
 
             measured_seq.append(measure)
-            psi = PostselectManyLayer(input_lanes, measure).forward(psi)
+            psi = PostselectManyLayer(self.cell.inout, measure).forward(psi)
 
             # reset qubits
-            psi = BitFlipLayer([i for i in input_lanes if measure[i]]).forward(psi)
+            psi = self.cell.bitflip_for(measure).forward(psi)
 
         probs = torch.stack(probs)
         measured_seq = torch.stack(measured_seq)

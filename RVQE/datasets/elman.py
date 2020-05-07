@@ -60,16 +60,16 @@ class DataElmanXOR(DataFactory):
             return " ".join(["".join([str(x[0]) for x in triple.tolist()]) for triple in torch.split(target, 3)])
         elif offset == 1:  # comparison
 
-            small = lambda n: "₀" if n == 0 else "₁"
+            small = lambda n: "₀" if n[0] == 0 else "₁"
 
-            out = f" {small(target[0])}{target[1].item()}"
+            out = f" {small(target[0])}{target[1,0].item()}"
             for triple in torch.split(target[2:], 3):
                 if len(triple) > 0:
                     out += " " + small(triple[0])
                 if len(triple) > 1:
                     out += small(triple[1])
                 if len(triple) > 2:
-                    out += f"{triple[2].item()}"
+                    out += f"{triple[2,0].item()}"
             return out
 
     def filter(self, probs: tensor, targets: tensor) -> Tuple[tensor, tensor]:

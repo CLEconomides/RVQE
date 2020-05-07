@@ -347,18 +347,15 @@ def train(shard: int, args):
 
 def command_train(args):
     # validate
-    required_workspace = {
-        "simple-seq": 3,
-        "simple-quotes": 5,
-        "elman-xor": 1,
-        "elman-letter": 6,
-        "shakespeare": 5,
+    datasets = {
+        "simple-seq",
+        "simple-quotes",
+        "elman-xor",
+        "elman-letter",
+        "shakespeare",
     }
-    assert args.dataset in required_workspace, "invalid dataset"
-    assert (
-        required_workspace[args.dataset] < args.workspace
-    ), f"need a workspace larger than {required_workspace[args.dataset]} for {args.dataset} dataset"
-    assert args.optimizer in ["sgd", "adam", "rmsprop", "lbfgs"], "invalid optimizer"
+    assert args.dataset in datasets, "invalid dataset"
+    assert args.optimizer in {"sgd", "adam", "rmsprop", "lbfgs"}, "invalid optimizer"
 
     torch.multiprocessing.spawn(train, args=(args,), nprocs=args.num_shards, join=True)
 

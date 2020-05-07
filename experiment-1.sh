@@ -7,7 +7,7 @@ LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
 
 trap "exit" INT
-sleep $[ ($RANDOM % 40) + 1 ]s
+sleep $[ ($RANDOM % 10) + 1 ]s
 
 for optim in "${optimizers[@]}"
 do
@@ -16,18 +16,24 @@ do
         LOCKFILE="$LOCKFILEFOLDER/experiment1-$optim-$lr.lock"
         DONEFILE="$LOCKFILEFOLDER/experiment1-$optim-$lr.done"
         sync
-        if [[ ! -f "$LOCKFILE" && ! -f "$DONEFILE" ]]
+        
+        if [[ ! -f "$DONEFILE" ]]
         then
-            touch "$LOCKFILE"
-            sync
-            echo "running $optim with $lr"
-            ./main.py --tag experiment1-$optim-$lr --epochs 500 train --optimizer $optim --learning-rate $lr
-            touch "$DONEFILE"
-            sync
-            sleep 1
-            rm "$LOCKFILE"
-        else
-            echo "skipping $optim with $lr"
+            # acquire lock
+            if ( set -o noclobber; echo "locked" > "$LOCKFILE") 2> /dev/null; then
+                trap 'rm -f "$LOCKFILE"; exit $?' INT TERM EXIT
+
+                echo "running $optim with $lr"
+                ./main.py --tag experiment1-$optim-$lr --epochs 500 train --optimizer $optim --learning-rate $lr
+                touch "$DONEFILE"
+                sync
+                sleep 1
+
+                trap "exit" INT
+                rm -f "$LOCKFILE"
+            else
+                echo "skipping $optim with $lr"
+            fi
         fi
     done
 done

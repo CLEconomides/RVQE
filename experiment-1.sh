@@ -6,7 +6,8 @@ learningrates=( 10.0 5.0 2.0 1.0 0.5 0.2 0.1 0.05 0.02 0.01 0.005 0.002 0.001 0.
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
 
-sleep $[ ($RANDOM % 400) + 1 ]s
+trap "exit" INT
+sleep $[ ($RANDOM % 40) + 1 ]s
 
 for optim in "${optimizers[@]}"
 do

@@ -7,7 +7,8 @@ workspaces=( 2 3 4 5 6 )
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
 
-sleep $[ ($RANDOM % 400) + 1 ]s
+trap "exit" INT
+sleep $[ ($RANDOM % 40) + 1 ]s
 
 for o in "${orders[@]}"
 do

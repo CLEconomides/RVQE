@@ -7,7 +7,8 @@ seeds=( 1523 2342 1231 9948 2349 5675 4358 9389 9999 2525 )
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
 
-sleep $[ ($RANDOM % 400) + 1 ]s
+trap "exit" INT
+sleep $[ ($RANDOM % 40) + 1 ]s
 
 for sd in "${seeds[@]}"
 do

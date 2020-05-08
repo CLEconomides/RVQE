@@ -195,31 +195,30 @@ def train(shard: int, args):
             dataset = datasets.DataShakespeare(**vars(original_args))
 
         # create model and distribute
-        rvqe = RVQE(
+        rvqe = DistributedDataParallel(RVQE(
             workspace_size=original_args.workspace,
             input_size=dataset.input_width,
             stages=original_args.stages,
             order=original_args.order,
             degree=original_args.degree,
-        )
-        rvqe_ddp = DistributedDataParallel(rvqe)
+        ))
 
         # create optimizer
         if original_args.optimizer == "sgd":
-            optimizer = torch.optim.SGD(rvqe_ddp.parameters(), lr=original_args.learning_rate)
+            optimizer = torch.optim.SGD(rvqe.parameters(), lr=original_args.learning_rate)
         elif original_args.optimizer == "adam":
-            optimizer = torch.optim.AdamW(rvqe_ddp.parameters(), lr=original_args.learning_rate)
+            optimizer = torch.optim.AdamW(rvqe.parameters(), lr=original_args.learning_rate)
         elif original_args.optimizer == "rmsprop":
-            optimizer = torch.optim.RMSprop(rvqe_ddp.parameters(), lr=original_args.learning_rate)
+            optimizer = torch.optim.RMSprop(rvqe.parameters(), lr=original_args.learning_rate)
         elif original_args.optimizer == "lbfgs":
-            optimizer = torch.optim.LBFGS(rvqe_ddp.parameters(), lr=original_args.learning_rate)
+            optimizer = torch.optim.LBFGS(rvqe.parameters(), lr=original_args.learning_rate)
 
         # when in resume mode, load model and optimizer state; otherwise initialize
         if RESUME_MODE:
-            rvqe_ddp.load_state_dict(store["model_state_dict"])
+            rvqe.load_state_dict(store["model_state_dict"])
             optimizer.load_state_dict(store["optimizer_state_dict"])
         else:
-            for name, p in rvqe_ddp.named_parameters():
+            for name, p in rvqe.named_parameters():
                 if name[-1:] == "θ":  # rY
                     pass
                     # nn.init.normal_(p, mean=0.0, std=0.005)
@@ -241,10 +240,10 @@ def train(shard: int, args):
 
         if RESUME_MODE:
             print(
-                f"🔄  Resuming session! Model has {len(list(rvqe_ddp.parameters()))} parameters, and we start at epoch {epoch_start} with best validation loss {best_validation_loss:7.3e}."
+                f"🔄  Resuming session! Model has {len(list(rvqe.parameters()))} parameters, and we start at epoch {epoch_start} with best validation loss {best_validation_loss:7.3e}."
             )
         else:
-            print(f"⏩  New session! Model has {len(list(rvqe_ddp.parameters()))} parameters.")
+            print(f"⏩  New session! Model has {len(list(rvqe.parameters()))} parameters.")
 
         for epoch in range(epoch_start, args.epochs):
             # check if we should timeout
@@ -262,7 +261,7 @@ def train(shard: int, args):
                 nonlocal targets
 
                 optimizer.zero_grad()
-                probs, _ = rvqe_ddp(sentences, postselect_measurement=True)
+                probs, _ = rvqe(sentences, postselect_measurement=True)
                 _probs, _targets = dataset.filter(probs, targets[:, 1:])
                 loss = criterion(_probs, _targets)  # the model never predicts the first token
                 loss.backward()
@@ -340,7 +339,7 @@ def train(shard: int, args):
                             best_validation_loss = validation_loss
                             environment.logger.add_scalar("loss/validate_best", best_validation_loss, epoch)
                             checkpoint = environment.save_checkpoint(
-                                rvqe_ddp,
+                                rvqe,
                                 optimizer,
                                 **{
                                     "epoch": epoch,
@@ -366,7 +365,7 @@ def train(shard: int, args):
 
         # Training done
         checkpoint = environment.save_checkpoint(
-            rvqe_ddp,
+            rvqe,
             optimizer,
             extra_tag="final" if not environment.is_timeout else "interrupted",
             **{"epoch": epoch, "best_validation_loss": best_validation_loss},
@@ -375,7 +374,7 @@ def train(shard: int, args):
             {k: v for k, v in vars(original_args).items() if isinstance(v, (int, float, str, bool, torch.Tensor))},
             {
                 "hparams/epoch": epoch,
-                "hparams/num_parameters": len(list(rvqe_ddp.parameters())),
+                "hparams/num_parameters": len(list(rvqe.parameters())),
                 "hparams/validate_best": best_validation_loss,
                 "hparams/cer_best": best_character_error_rate,
             },

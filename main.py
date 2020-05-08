@@ -52,6 +52,8 @@ class DistributedTrainingEnvironment:
         self.world_size = args.num_shards
         self.port = args.port
         self.seed = args.seed
+        self.timeout = args.timeout
+        self._time_start = timer()
         self._original_args = args
         # the hex tokens are different in different shards; so checkpoint from the same shard always
         # this has to be set only initially, as it'll be restored on resume
@@ -99,6 +101,20 @@ class DistributedTrainingEnvironment:
 
         torch.distributed.gather(data, gather_list, 0)
         return gather_list
+
+    @property
+    def is_timeout(self) -> bool:
+        if self.timeout is None:
+            return False
+
+        ret = tensor([0])
+        if (timer() - self._time_start) > self.timeout:
+            ret[:] = 1
+            torch.distributed.broadcast(ret, 0)
+
+        self.synchronize()
+
+        return ret.item() == 1
 
     CHECKPOINT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "checkpoints/")
 
@@ -230,11 +246,13 @@ def train(shard: int, args):
         else:
             print(f"⏩  New session! Model has {len(list(rvqe_ddp.parameters()))} parameters.")
 
-        time_start = timer()
         for epoch in range(epoch_start, args.epochs):
-            epoch += 1
-            time_start = timer()
+            # check if we should timeout
+            if environment.is_timeout:
+                print(f"❎  Timeout hit after {original_args.timeout}s.")
+                break
 
+            time_start = timer()
             # advance by one training batch
             loss = None
             sentences, targets = dataset.next_batch()
@@ -348,7 +366,10 @@ def train(shard: int, args):
 
         # Training done
         checkpoint = environment.save_checkpoint(
-            rvqe_ddp, optimizer, extra_tag="final", **{"epoch": epoch, "best_validation_loss": best_validation_loss},
+            rvqe_ddp,
+            optimizer,
+            extra_tag="final" if not environment.is_timeout else "interrupted",
+            **{"epoch": epoch, "best_validation_loss": best_validation_loss},
         )
         environment.logger.add_hparams(
             {k: v for k, v in vars(original_args).items() if isinstance(v, (int, float, str, bool, torch.Tensor))},
@@ -374,7 +395,10 @@ def command_train(args):
     assert args.dataset in datasets, "invalid dataset"
     assert args.optimizer in {"sgd", "adam", "rmsprop", "lbfgs"}, "invalid optimizer"
 
-    torch.multiprocessing.spawn(train, args=(args,), nprocs=args.num_shards, join=True)
+    if args.num_shards == 1:
+        train(0, args)
+    else:
+        torch.multiprocessing.spawn(train, args=(args,), nprocs=args.num_shards, join=True)
 
 
 def command_resume(args):
@@ -412,6 +436,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--tag", metavar="TAG", type=str, default="", help="tag for checkpoints and logs")
     parser.add_argument("--epochs", metavar="EP", type=int, default=5000, help="number of learning epochs")
+    parser.add_argument("--timeout", metavar="TO", type=int, default=None, help="timeout in s after what time to interrupt")
     parser.add_argument("--stop-at-loss", metavar="SL", type=float, default=None, help="stop at this validation loss")
     parser.add_argument(
         "--seed", metavar="SEED", type=int, default=82727, help="random seed for parameter initialization"

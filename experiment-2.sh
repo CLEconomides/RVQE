@@ -29,16 +29,17 @@ do
                             --seed $sd \
                             --num-shards 60 \
                             --epochs 2500 \
+                            --timeout 41400 \
                             train \
                             --dataset elman-xor \
-                            --workspace 6 \
-                            --stages 6 \
+                            --workspace 5 \
+                            --stages 5 \
                             --order 2 \
                             --degree 2 \
                             --optimizer $optim \
                             --learning-rate $lr \
                             --sentence-length 12 \
-                            --batch-size 2
+                            --batch-size 1
                         
                         if  [[ $? -eq 0 ]] ; then
                             touch "$DONEFILE"                

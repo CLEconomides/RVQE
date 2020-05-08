@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 
 orders=( 1 2 3 )
-stages=( 1 2 3 4 5 6 7 8 )
-workspaces=( 2 3 4 5 6 )
+degrees=( 1 2 3 )
+stages=( 1 2 3 4 5 )
+workspaces=( 1 2 3 4 5 )
 
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
@@ -12,27 +13,51 @@ sleep $[ ($RANDOM % 40) + 1 ]s
 
 for o in "${orders[@]}"
 do
-    for s in "${stages[@]}"
+    for d in "${degrees[@]}"
     do
-        for w in "${workspaces[@]}"
+        for s in "${stages[@]}"
         do
-            LOCKFILE="$LOCKFILEFOLDER/experiment3-$o-$s-$w-.lock"
-            DONEFILE="$LOCKFILEFOLDER/experiment3-$o-$s-$w-.done"
-            sync
-            if [[ ! -f "$LOCKFILE" && ! -f "$DONEFILE" ]]
-            then
-                touch "$LOCKFILE"
+            for w in "${workspaces[@]}"
+            do
+
+                LOCKFILE="$LOCKFILEFOLDER/experiment3-$o-$d-$s-$w.lock"
+                DONEFILE="$LOCKFILEFOLDER/experiment3-$o-$d-$s-$w.done"
                 sync
-                echo "running order $o, stages $s, workspace $w"
-                (( port = 16337 + 100 * $w + 10 * $s + $o ))
-                ./main.py --port $port --num-shards 2 --tag experiment3-$o-$s-$w --epochs 500 train --dataset elman-xor --sentence-length 21 --stages $s --workspace $w --order $o --optimizer rmsprop --learning-rate 0.15 --batch-size 3 
-                touch "$DONEFILE"
-                sync
-                sleep 1
-                rm "$LOCKFILE"
-            else
-                echo "skipping order $o, stages $s, workspace $w"
-            fi
+
+                if [[ ! -f "$DONEFILE" ]] ; then
+                    {
+                        if flock -n 200 ; then
+                            echo "running $o-$d-$s-$w"
+                            ./main.py \
+                                --tag experiment3-$o-$d-$s-$w \
+                                --seed 2349711 \
+                                --num-shards 2 \
+                                --epochs 500 \
+                                train \
+                                --dataset simple-seq \
+                                --workspace $w \
+                                --stages $s \
+                                --order $o \
+                                --degree $d \
+                                --optimizer rmsprop \
+                                --learning-rate 0.01 \
+                                --sentence-length 20 \
+                                --batch-size 1
+                            
+                            if  [[ $? -eq 0 ]] ; then
+                                touch "$DONEFILE"                
+                                sync
+                            else
+                                echo "failure running $o-$d-$s-$w."
+                            fi
+                            sleep 1
+
+                        else
+                            echo "skipping $o-$d-$s-$w"
+                        fi
+                    } 200>"$LOCKFILE"
+                fi
+            done
         done
     done
 done

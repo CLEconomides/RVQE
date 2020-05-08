@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 optimizers=( "rmsprop" )
-learningrates=( 1.0 0.5 0.2 0.1 0.05 0.02 0.01 0.005 0.002 0.001 )
+learningrates=( 0.02 0.01 0.005 0.002 )
 seeds=( 1523 2342 1231 )
 
 LOCKFILEFOLDER="./locks"
@@ -27,12 +27,12 @@ do
                         ./main.py \
                             --tag experiment2-$sd-$optim-$lr \
                             --seed $sd \
-                            --num-shards 10 \
+                            --num-shards 60 \
                             --epochs 2500 \
                             train \
                             --dataset elman-xor \
-                            --workspace 10 \
-                            --stages 5 \
+                            --workspace 6 \
+                            --stages 6 \
                             --order 2 \
                             --degree 2 \
                             --optimizer $optim \
@@ -52,29 +52,6 @@ do
                         echo "skipping $optim with $lr"
                     fi
                 } 200>"$LOCKFILE"
-            fi
-
-
-            if [[ ! -f "$LOCKFILE" && ! -f "$DONEFILE" ]]
-            then
-                touch "$LOCKFILE"
-                sync
-                echo "running $optim with $lr"
-                ./main.py --tag experiment2-$sd-$optim-$lr --seed $sd --num-shards 3 --epochs 500 train --dataset elman-xor --stages 3 --optimizer $optim --learning-rate $lr --sentence-length 3 --batch-size 4
-                status=$?
-                
-                if test $status -eq 0
-                then
-                    touch "$DONEFILE"
-                    sync
-                    sleep 1
-                    rm "$LOCKFILE"
-                else
-                    echo "failure running $optim with $lr."
-                    rm "$LOCKFILE"
-                fi                
-            else
-                echo "skipping $optim with $lr and seed $sd"
             fi
         done
     done

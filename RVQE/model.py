@@ -14,7 +14,7 @@ from torch import nn
 
 
 class RVQECell(nn.Module):
-    def __init__(self, workspace_size: int, input_size: int, stages: int, order: int = 2):
+    def __init__(self, *, workspace_size: int, input_size: int, stages: int, order: int = 2, degree: int = 2):
         """
             by default we set up the qubit indices to be
             ancillas, workspace, input
@@ -25,6 +25,7 @@ class RVQECell(nn.Module):
 
         self.stages = stages
         self.order = order
+        self.degree = degree
 
         self.ancillas = list(range(0, order))
         self.workspace = list(range(order, order + workspace_size))
@@ -32,7 +33,9 @@ class RVQECell(nn.Module):
 
         self.input_layer = nn.Sequential(
             *[
-                QuantumNeuronLayer(workspace=self.workspace + self.inout, outlane=out, ancillas=self.ancillas)
+                QuantumNeuronLayer(
+                    workspace=self.workspace + self.inout, outlane=out, ancillas=self.ancillas, degree=degree
+                )
                 for out in self.workspace
             ]
         )

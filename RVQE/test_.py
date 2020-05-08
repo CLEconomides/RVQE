@@ -120,9 +120,8 @@ from .model import *
 
 
 def test_rvqe_cell():
-    assert len(list(RVQECell(6, 3).parameters())) == 6 * 3 + 6 * (6 - 1) * 3 + 6 * 3  # == 6*(6+1)*3
-    assert len(list(RVQECell(8, 2).parameters())) == 8 * 9 * 2
-    temp = RVQECell(3, 1).forward(ket0(5), [1])[0][0]
+    assert RVQECell(workspace_size=4, input_size=1, stages=1, order=2).num_qubits == 4 + 1 + 2
+    temp = RVQECell(workspace_size=4, input_size=1, stages=1, order=2).forward(ket0(7), [1])[0][0]
     temp.backward()
 
 

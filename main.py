@@ -14,11 +14,25 @@ from RVQE.model import RVQE
 from RVQE.quantum import tensor
 from RVQE import datasets
 
-import math
+import math, re
 
-from termcolor import colored
+import colorful
 
 import secrets
+
+
+# colorful printing
+
+colorful.use_palette(
+    {"background": "#0B2A71", "white": "#ffffff", "gold": "#EDC835", "validate": "#7EBE7B",}
+)
+
+
+def colorless(line: colorful.core.ColorfulString) -> str:
+    while isinstance(line, colorful.core.ColorfulString):
+        line = line.orig_string
+    ansi_escape = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
+    return ansi_escape.sub("", line)
 
 
 class MockSummaryWriter:
@@ -170,6 +184,7 @@ def train(shard: int, args):
             input_size=dataset.input_width,
             stages=original_args.stages,
             order=original_args.order,
+            degree=original_args.degree,
         )
         rvqe_ddp = DistributedDataParallel(rvqe)
 
@@ -201,14 +216,16 @@ def train(shard: int, args):
         _criterion = nn.CrossEntropyLoss()
         BEST_LOSS_POSSIBLE = -1 + math.log(2 ** dataset.input_width - 1 + math.e)  # see formula for CrossEntropyLoss
         criterion = lambda *args, **kwargs: _criterion(*args, **kwargs) - BEST_LOSS_POSSIBLE
-        print(colored(f"best possible loss: {BEST_LOSS_POSSIBLE:7.3e}", "magenta"), "automatically subtracted")
+        print(
+            colorful.validate(f"best possible loss: {BEST_LOSS_POSSIBLE:7.3e}", "magenta"), "automatically subtracted"
+        )
 
         # wait for all shards to be happy
         environment.synchronize()
 
         if RESUME_MODE:
             print(
-                f"⏩  Resuming session! Model has {len(list(rvqe_ddp.parameters()))} parameters, and we start at epoch {epoch_start} with best validation loss {best_validation_loss:7.3e}."
+                f"🔄  Resuming session! Model has {len(list(rvqe_ddp.parameters()))} parameters, and we start at epoch {epoch_start} with best validation loss {best_validation_loss:7.3e}."
             )
         else:
             print(f"⏩  New session! Model has {len(list(rvqe_ddp.parameters()))} parameters.")
@@ -270,11 +287,11 @@ def train(shard: int, args):
                             sen = sentences[i]
 
                             text = f"gold = { dataset.to_human(sen) }"
-                            print(colored(text, "yellow"),)
-                            logtext += "    " + text + "\r\n"
+                            print(colorful.gold(text))
+                            logtext += "    " + colorless(text) + "\r\n"
                             text = f"pred = { dataset.to_human(seq, offset=1) }"
                             print(text)
-                            logtext += "    " + text + "\r\n"
+                            logtext += "    " + colorless(text) + "\r\n"
 
                         # character error rate
                         total = 0
@@ -288,8 +305,8 @@ def train(shard: int, args):
 
                         character_error_rate = 1 - correct / total
 
-                        print(colored(f"validation loss:       {validation_loss:7.3e}", "green"))
-                        print(colored(f"character error rate:  {character_error_rate:.3f}", "green"))
+                        print(colorful.bold_validate(f"validation loss:       {validation_loss:7.3e}", "green"))
+                        print(colorful.validate(f"character error rate:  {character_error_rate:.3f}", "green"))
 
                         # log
                         environment.logger.add_scalar("loss/validate", validation_loss, epoch)
@@ -342,7 +359,7 @@ def train(shard: int, args):
                 "hparams/cer_best": best_character_error_rate,
             },
         )
-        print(f"⏩  DONE. Written final checkpoint to {checkpoint}")
+        print(f"🆗  DONE. Written final checkpoint to {checkpoint}")
 
 
 def command_train(args):
@@ -365,6 +382,16 @@ def command_resume(args):
 
 
 if __name__ == "__main__":
+
+    title = " RVQE Trainer "
+    print(
+        colorful.background("▄" * len(title))
+        + "\n"
+        + colorful.bold_white_on_background(title)
+        + "\n"
+        + colorful.background("▀" * len(title))
+    )
+
     import argparse
 
     parser = argparse.ArgumentParser(
@@ -399,6 +426,7 @@ if __name__ == "__main__":
     )
     parser_train.add_argument("--stages", metavar="S", type=int, default=2, help="RVQE cell stages")
     parser_train.add_argument("--order", metavar="O", type=int, default=2, help="order of activation function")
+    parser_train.add_argument("--degree", metavar="O", type=int, default=2, help="degree of quantum neuron")
     parser_train.add_argument(
         "--dataset",
         metavar="D",

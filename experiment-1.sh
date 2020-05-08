@@ -21,7 +21,7 @@ do
             {
                 if flock -n 200 ; then
                     echo "running $optim with $lr"
-                    ./main.py --tag experiment1-$optim-$lr --epochs 500 train --optimizer $optim --learning-rate $lr --workspace 3 --stages 2 --order 2
+                    ./main.py --tag experiment1-$optim-$lr --epochs 500 train --optimizer $optim --learning-rate $lr --workspace 5 --stages 5 --order 2
                     touch "$DONEFILE"
                     sync
                     sleep 1

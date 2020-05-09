@@ -118,10 +118,10 @@ class DistributedTrainingEnvironment:
 
     CHECKPOINT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "checkpoints/")
 
-    def save_checkpoint(self, model, optimizer, extra_tag: str = "", **kwargs):
-        """
-            we don't check whether this is only called from shard 0
-        """
+    def save_checkpoint(self, model, optimizer, extra_tag: str = "", **kwargs) -> Optional[str]:
+        if self.shard != 0:
+            return None
+
         kwargs.update(
             {
                 "model_state_dict": model.state_dict(),

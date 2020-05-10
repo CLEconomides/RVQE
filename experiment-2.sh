@@ -2,7 +2,7 @@
 # see whether we can get the elman-xor setup to converge
 
 batchsizes=( 8 32 )
-learningrates=( 0.02 0.005 )
+learningrates=( 0.005 0.02 )
 seeds=( 720 7292 4402 5427 4269 7928 3475 5114 3975 2733 1217 8443 2 2826 9432 6936 5081 3774 7427 700 1664 7262 499 9736 6654 )
 
 LOCKFILEFOLDER="./locks"
@@ -30,10 +30,10 @@ do
                         ./main.py \
                             --tag experiment2-$TAG \
                             --seed $sd \
-                            --num-shards 3 \
-                            --epochs 500 \
+                            --num-shards 2 \
+                            --epochs 1000 \
                             train \
-                            --dataset elman-xor \
+                            --dataset elman-letter \
                             --workspace 6 \
                             --stages 3 \
                             --order 2 \

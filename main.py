@@ -12,7 +12,7 @@ from timeit import default_timer as timer
 
 from RVQE.model import RVQE, count_parameters
 from RVQE.quantum import tensor
-from RVQE import datasets
+from RVQE import datasets, data
 
 import math, re
 
@@ -301,11 +301,13 @@ def train(shard: int, args):
 
                     # collect in main shard
                     sentences = environment.gather(sentences)
+                    targets = environment.gather(targets)
                     measured_seqs = environment.gather(measured_seqs)
                     validation_loss = environment.reduce(validation_loss, ReduceOp.SUM)
 
                     if shard == 0:
                         sentences = torch.cat(sentences)
+                        targets = torch.cat(targets)
                         measured_seqs = torch.cat(measured_seqs)
                         validation_loss /= args.num_shards
 
@@ -326,16 +328,9 @@ def train(shard: int, args):
                             logtext += "    " + colorless(text) + "\r\n"
 
                         # character error rate
-                        total = 0
-                        correct = 0
-                        for seq, sen in zip(measured_seqs, sentences):
-                            seq = dataset.filter_sentence(seq)
-                            sen = dataset.filter_sentence(sen[1:])
-                            for wa, wb in zip(seq, sen):
-                                total += 1
-                                correct += 1 if torch.all(wa == wb) else 0
-
-                        character_error_rate = 1 - correct / total
+                        character_error_rate = data.character_error_rate(
+                            measured_seqs, targets[:, 1:]
+                        )
 
                         print(
                             colorful.bold_validate(
@@ -351,7 +346,7 @@ def train(shard: int, args):
                         # log
                         environment.logger.add_scalar("loss/validate", validation_loss, epoch)
                         environment.logger.add_scalar(
-                            "accuracy/cer_current", character_error_rate, epoch
+                            "accuracy/character_error_rate_current", character_error_rate, epoch
                         )
                         environment.logger.add_text("validation_samples", logtext, epoch)
 
@@ -361,7 +356,9 @@ def train(shard: int, args):
                         ):
                             best_character_error_rate = character_error_rate
                             environment.logger.add_scalar(
-                                "accuracy/cer_best", best_character_error_rate, epoch
+                                "accuracy/character_error_rate_best",
+                                best_character_error_rate,
+                                epoch,
                             )
 
                         # checkpointing
@@ -412,7 +409,7 @@ def train(shard: int, args):
                 "hparams/epoch": epoch,
                 "hparams/num_parameters": len(list(rvqe.parameters())),
                 "hparams/validate_best": best_validation_loss,
-                "hparams/cer_best": best_character_error_rate,
+                "hparams/character_error_rate_best": best_character_error_rate,
             },
         )
         print(f"🆗  DONE. Written final checkpoint to {checkpoint}")

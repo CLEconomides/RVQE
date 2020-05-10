@@ -21,7 +21,6 @@ def pairwise(iterable):
 def bitword_to_int(lst: Union[Bitword, tensor]) -> int:
     if not isinstance(lst, list):
         lst = lst.tolist()
-
     return int("".join(str(n) for n in lst), 2)
 
 
@@ -48,6 +47,19 @@ def char_to_bitword(char: str, characters: str, width: int) -> Bitword:
     idx = characters.index(char)
     char_bitword = f"{idx:b}".rjust(width, "0")
     return [int(c) for c in char_bitword[-width:]]
+
+
+# character error rate
+def character_error_rate(sentence: tensor, target: tensor) -> float:
+    """
+        we assume that sequence and target align 1:1
+    """
+    if target.dim() == 1:  # no batch
+        assert sentence.dim() == 2, "sentence has to have dimension 2 if no batch given"
+        target = target.unsqueeze(0)
+        sentence = sentence.unsqueeze(0)
+    sentence = tensor([[bitword_to_int(bw) for bw in sen] for sen in sentence])
+    return (sentence == target).to(float).mean()
 
 
 # data loader for distributed environment

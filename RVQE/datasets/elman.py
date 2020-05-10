@@ -45,7 +45,7 @@ class DataElmanXOR(DataFactory):
             for _ in range(0, self.sentence_length, 3):
                 a, b = torch.randint(0, 2, (2,), generator=self.rng).tolist()
                 c = a ^ b
-                sentence += [[a, 1], [b, 1], [c, 0]]
+                sentence += [[0, a], [0, b], [0, c]]
                 target += [2, 2, c]
             sentence = sentence[: self.sentence_length]
             target = target[: self.sentence_length]
@@ -57,19 +57,23 @@ class DataElmanXOR(DataFactory):
         return tensor(sentences), tensor(targets)
 
     def to_human(self, target: tensor, offset: int = 0) -> str:
+        def to_str(item: tensor) -> str:
+            item = bitword_to_int(item)
+            return "·" if item == 2 else str(item)
+
         def style_triple(triple: List[int]) -> str:
             if len(triple) > 0:
-                out = str(triple[0][0])
+                out = to_str(triple[0])
             if len(triple) > 1:
-                out += str(triple[1][0])
+                out += to_str(triple[1])
             if len(triple) > 2:
-                out += colorful.bold(str(triple[2][0]))
+                out += colorful.bold(to_str(triple[2]))
             return out
 
         if offset == 0:  # gold
             return " ".join([style_triple(triple.tolist()) for triple in torch.split(target, 3)])
         elif offset == 1:  # comparison
-            out = " " + str(target[0, 0].item()) + colorful.bold(str(target[1, 0].item())) + " "
+            out = " " + to_str(target[0]) + colorful.bold(to_str(target[1])) + " "
             return out + " ".join(
                 [style_triple(triple.tolist()) for triple in torch.split(target[2:], 3)]
             )

@@ -53,7 +53,7 @@ def character_error_rate(sequence: tensor, target: tensor) -> float:
         we assume that sequence and target align 1:1
     """
     assert target.dim() == sequence.dim()
-    return 1. - (sequence == target).to(float).mean()
+    return 1.0 - (sequence == target).to(float).mean()
 
 
 # target preprocessing helper functions
@@ -68,10 +68,7 @@ def targets_for_loss(sentences: tensor):
         sentences = batch.unsqueeze(0)
     assert sentences.dim() == 3
 
-    return tensor([
-        [bitword_to_int(word) for word in sentence]
-        for sentence in sentences
-    ])
+    return tensor([[bitword_to_int(word) for word in sentence] for sentence in sentences])
 
 
 def skip_first(targets: tensor) -> tensor:
@@ -83,6 +80,7 @@ def skip_first(targets: tensor) -> tensor:
         W - word width
     """
     return targets[:, 1:]
+
 
 # data loader for distributed environment
 from abc import ABC, abstractmethod
@@ -106,7 +104,9 @@ class DataFactory(ABC):
 
         return batch
 
-    def _sentences_to_batches(self, sentences: List[List[Bitword]], targets: List[List[Bitword]]) -> List[Batch]:
+    def _sentences_to_batches(
+        self, sentences: List[List[Bitword]], targets: List[List[Bitword]]
+    ) -> List[Batch]:
         targets = tensor(targets)
         sentences = tensor(sentences)
 
@@ -116,7 +116,9 @@ class DataFactory(ABC):
 
         return list(zip(sentences, targets))
 
-    def _sentences_to_batch(self, sentences: List[List[Bitword]], targets: List[List[Bitword]]) -> Batch:
+    def _sentences_to_batch(
+        self, sentences: List[List[Bitword]], targets: List[List[Bitword]]
+    ) -> Batch:
         return self._sentences_to_batches(sentences, targets)[0]
 
     @property

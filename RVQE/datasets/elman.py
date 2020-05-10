@@ -56,7 +56,6 @@ class DataElmanXOR(DataFactory):
         # turn into batch
         return self._sentences_to_batch(sentences, targets)
 
-
     def to_human(self, target: tensor, offset: int = 0) -> str:
         def to_str(item: tensor) -> str:
             item = bitword_to_int(item)
@@ -134,9 +133,9 @@ class DataElmanLetter(DataFactory):
     }
 
     TARGET_LUT = {
-        "b": [0]*6,  # marker for arbitrary consonant
-        "d": [0]*6,
-        "g": [0]*6,
+        "b": [0] * 6,  # marker for arbitrary consonant
+        "d": [0] * 6,
+        "g": [0] * 6,
         "a": BITWORD_LUT["a"],
         "i": BITWORD_LUT["i"],
         "u": BITWORD_LUT["u"],

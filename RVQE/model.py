@@ -124,7 +124,12 @@ class RVQE(nn.Module):
         super().__init__()
         self.cell = RVQECell(**kwargs)
 
-    def forward(self, inputs: tensor, targets: tensor, postselect_measurement: Union[bool, Callable[[int], bool]]) -> Tuple[tensor, list]:
+    def forward(
+        self,
+        inputs: tensor,
+        targets: tensor,
+        postselect_measurement: Union[bool, Callable[[int], bool]],
+    ) -> Tuple[tensor, list]:
         if isinstance(postselect_measurement, bool):
             # return callback that gives constant
             _postselect_measurement = postselect_measurement

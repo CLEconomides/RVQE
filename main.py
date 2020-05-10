@@ -24,7 +24,13 @@ import secrets
 # colorful printing
 
 colorful.use_palette(
-    {"background": "#0B2A71", "white": "#ffffff", "gold": "#EDC835", "validate": "#7EBE7B", "faint": "#606060"}
+    {
+        "background": "#0B2A71",
+        "white": "#ffffff",
+        "gold": "#EDC835",
+        "validate": "#7EBE7B",
+        "faint": "#606060",
+    }
 )
 
 
@@ -275,7 +281,9 @@ def train(shard: int, args):
                 probs, _ = rvqe(sentences, targets, postselect_measurement=True)
                 _probs = dataset.filter(probs, dim=2)
                 _targets = dataset.filter(data.skip_first(targets), dim=1)
-                loss = criterion(_probs, data.targets_for_loss(_targets))  # the model never predicts the first token
+                loss = criterion(
+                    _probs, data.targets_for_loss(_targets)
+                )  # the model never predicts the first token
                 loss.backward()
 
                 return loss
@@ -296,7 +304,9 @@ def train(shard: int, args):
             if epoch % 10 == 0 or epoch == args.epochs - 1:
                 with torch.no_grad():
                     # run entire batch through the network without postselecting measurements
-                    measured_probs, measured_sequences = rvqe(sentences, targets, postselect_measurement=dataset.ignore_output_at_step)
+                    measured_probs, measured_sequences = rvqe(
+                        sentences, targets, postselect_measurement=dataset.ignore_output_at_step
+                    )
                     _probs = dataset.filter(measured_probs, dim=2)
                     _targets = dataset.filter(data.skip_first(targets), dim=1)
                     validation_loss = criterion(_probs, data.targets_for_loss(_targets))
@@ -431,9 +441,19 @@ def command_train(args):
     assert args.optimizer in {"sgd", "adam", "rmsprop", "lbfgs"}, "invalid optimizer"
 
     if args.dataset == "simple-seq":
-        assert args.num_shards == 2 and args.batch_size == 1 or args.num_shards == 1 and args.batch_size == 2
+        assert (
+            args.num_shards == 2
+            and args.batch_size == 1
+            or args.num_shards == 1
+            and args.batch_size == 2
+        )
     if args.dataset == "simple-quotes":
-        assert args.num_shards == 5 and args.batch_size == 1 or args.num_shards == 1 and args.batch_size == 5
+        assert (
+            args.num_shards == 5
+            and args.batch_size == 1
+            or args.num_shards == 1
+            and args.batch_size == 5
+        )
 
     if args.num_shards == 1:
         train(0, args)

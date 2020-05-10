@@ -31,16 +31,16 @@ do
                             --tag experiment2-$TAG \
                             --seed $sd \
                             --num-shards 3 \
-                            --epochs 5000 \
+                            --epochs 500 \
                             train \
                             --dataset elman-xor \
-                            --workspace 8 \
+                            --workspace 6 \
                             --stages 3 \
                             --order 2 \
                             --degree 4 \
                             --optimizer rmsprop \
                             --learning-rate $lr \
-                            --sentence-length 12 \
+                            --sentence-length 36 \
                             --batch-size $bs
                         
                         if  [[ $? -eq 0 ]] ; then

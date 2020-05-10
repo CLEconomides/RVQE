@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# test which network configuration is how good at the simple-seq memoization task
+# this experiment is very neat and simple; keep
 
 orders=( 1 2 3 )
 degrees=( 1 2 3 )

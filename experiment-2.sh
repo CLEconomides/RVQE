@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
+# see whether we can get the elman-xor setup to converge
 
-optimizers=( "rmsprop" )
-learningrates=( 0.02 0.01 0.005 0.002 )
-seeds=( 1523 2342 1231 )
+batchsizes=( 8 32 )
+learningrates=( 0.02 0.005 )
+seeds=( 720 7292 4402 5427 4269 7928 3475 5114 3975 2733 1217 8443 2 2826 9432 6936 5081 3774 7427 700 1664 7262 499 9736 6654 )
 
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
@@ -12,45 +13,46 @@ sleep $[ ($RANDOM % 40) + 1 ]s
 
 for lr in "${learningrates[@]}"
 do
-    for sd in "${seeds[@]}"
+    for bs in "${batchsizes[@]}"
     do
-        for optim in "${optimizers[@]}"
+        for sd in "${seeds[@]}"
         do
-            LOCKFILE="$LOCKFILEFOLDER/experiment2-$sd-$optim-$lr.lock"
-            DONEFILE="$LOCKFILEFOLDER/experiment2-$sd-$optim-$lr.done"
+            TAG="$lr-$sd-$bs"
+
+            LOCKFILE="$LOCKFILEFOLDER/experiment2-$TAG.lock"
+            DONEFILE="$LOCKFILEFOLDER/experiment2-$TAG.done"
             sync
 
             if [[ ! -f "$DONEFILE" ]] ; then
                 {
                     if flock -n 200 ; then
-                        echo "running $optim with $lr"
+                        echo "running $TAG"
                         ./main.py \
-                            --tag experiment2-$sd-$optim-$lr \
+                            --tag experiment2-$TAG \
                             --seed $sd \
-                            --num-shards 60 \
-                            --epochs 2500 \
-                            --timeout 41400 \
+                            --num-shards 3 \
+                            --epochs 5000 \
                             train \
                             --dataset elman-xor \
-                            --workspace 5 \
-                            --stages 5 \
+                            --workspace 8 \
+                            --stages 3 \
                             --order 2 \
-                            --degree 2 \
-                            --optimizer $optim \
+                            --degree 4 \
+                            --optimizer rmsprop \
                             --learning-rate $lr \
                             --sentence-length 12 \
-                            --batch-size 1
+                            --batch-size $bs
                         
                         if  [[ $? -eq 0 ]] ; then
                             touch "$DONEFILE"                
                             sync
                         else
-                            echo "failure running $optim with $lr."
+                            echo "failure running $TAG."
                         fi
                         sleep 1
 
                     else
-                        echo "skipping $optim with $lr"
+                        echo "skipping $TAG"
                     fi
                 } 200>"$LOCKFILE"
             fi

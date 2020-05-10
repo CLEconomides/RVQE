@@ -83,8 +83,6 @@ class DataElmanXOR(DataFactory):
             01 110 000 011
              |   |   |   |
         """
-        return probs, targets  # temporary
-
         if probs.dim() == 3:
             assert targets.dim() == 2, "discovered batch but target dimensions don't work"
             return probs[:, :, 1::3], targets[:, 1::3]

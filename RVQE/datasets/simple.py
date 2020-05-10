@@ -15,7 +15,9 @@ class DataSimpleSequences(DataFactory):
         super().__init__(shard, num_shards=num_shards, **kwargs)
 
         sentences = [
-            alternating_sentence(self.sentence_length, [[0, 0, 0], [0, 0, 1], [0, 1, 0], [0, 1, 1]]),
+            alternating_sentence(
+                self.sentence_length, [[0, 0, 0], [0, 0, 1], [0, 1, 0], [0, 1, 1]]
+            ),
             constant_sentence(self.sentence_length, [1, 0, 0]),
         ]
 
@@ -52,7 +54,8 @@ class DataSimpleQuotes(DataFactory):
         maxlen = max(len(sentence) for sentence in sentences)
         sentences = [sentence.ljust(maxlen) for sentence in sentences]
         sentences = [
-            [char_to_bitword(c, DataSimpleQuotes.VALID_CHARACTERS, 5) for c in sentence] for sentence in sentences
+            [char_to_bitword(c, DataSimpleQuotes.VALID_CHARACTERS, 5) for c in sentence]
+            for sentence in sentences
         ]
 
         self._batches_data = self._sentences_to_batches(sentences)
@@ -66,4 +69,6 @@ class DataSimpleQuotes(DataFactory):
         return 5
 
     def to_human(self, target: tensor, offset: int = 0) -> str:
-        return " " * offset + "".join([DataSimpleQuotes.DISPLAY_CHARACTERS[bitword_to_int(c)] for c in target])
+        return " " * offset + "".join(
+            [DataSimpleQuotes.DISPLAY_CHARACTERS[bitword_to_int(c)] for c in target]
+        )

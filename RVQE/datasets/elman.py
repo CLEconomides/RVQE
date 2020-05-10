@@ -70,7 +70,9 @@ class DataElmanXOR(DataFactory):
             return " ".join([style_triple(triple.tolist()) for triple in torch.split(target, 3)])
         elif offset == 1:  # comparison
             out = " " + str(target[0, 0].item()) + colorful.bold(str(target[1, 0].item())) + " "
-            return out + " ".join([style_triple(triple.tolist()) for triple in torch.split(target[2:], 3)])
+            return out + " ".join(
+                [style_triple(triple.tolist()) for triple in torch.split(target[2:], 3)]
+            )
 
     def filter(self, probs: tensor, targets: tensor) -> Tuple[tensor, tensor]:
         """
@@ -87,7 +89,9 @@ class DataElmanXOR(DataFactory):
             assert targets.dim() == 2, "discovered batch but target dimensions don't work"
             return probs[:, :, 1::3], targets[:, 1::3]
         else:
-            assert probs.dim() == 2 and targets.dim() == 1, "no batch discovered but dimensions don't work"
+            assert (
+                probs.dim() == 2 and targets.dim() == 1
+            ), "no batch discovered but dimensions don't work"
             return probs[1::3], targets[1::3]
 
     def filter_sentence(self, sentence: tensor) -> tensor:
@@ -182,7 +186,9 @@ class DataElmanLetter(DataFactory):
         out = " " * offset
 
         # append string
-        out += "".join([self.INVERSE_TARGET_LUT[c] if c in self.INVERSE_TARGET_LUT else "?" for c in target])
+        out += "".join(
+            [self.INVERSE_TARGET_LUT[c] if c in self.INVERSE_TARGET_LUT else "?" for c in target]
+        )
 
         # if we start with a consonant, trim one space off
         return out if target[0] not in [41, 45, 43, 0] else out[1:]

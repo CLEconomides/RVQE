@@ -55,7 +55,9 @@ from abc import ABC, abstractmethod
 
 
 class DataFactory(ABC):
-    def __init__(self, shard: int, num_shards: int, batch_size: int, sentence_length: int, **kwargs):
+    def __init__(
+        self, shard: int, num_shards: int, batch_size: int, sentence_length: int, **kwargs
+    ):
         self.shard = shard
         self.num_shards = num_shards
         self.batch_size = batch_size

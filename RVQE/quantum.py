@@ -59,11 +59,13 @@ _EINSUM_ALPHABET = "abcdefghijklmnopqrstuvwxyz"
 
 def squish_idcs_up(idcs: str) -> str:
     sorted_idcs = sorted(idcs)
-    return "".join([_EINSUM_ALPHABET[-i - 1] for i in [len(idcs) - 1 - sorted_idcs.index(c) for c in idcs]])
+    return "".join(
+        [_EINSUM_ALPHABET[-i - 1] for i in [len(idcs) - 1 - sorted_idcs.index(c) for c in idcs]]
+    )
 
 
 @functools.lru_cache(maxsize=10 ** 6)
-def einsum_indices(m: int, n: int, target_lanes: Tuple[int]) -> Tuple[str, str, str]:
+def einsum_indices_op(m: int, n: int, target_lanes: Tuple[int]) -> Tuple[str, str, str]:
     assert len(target_lanes) == m, "number of target and operator indices don't match"
     assert torch.all(tensor(target_lanes) < n), "target lanes not present in state"
 
@@ -72,15 +74,31 @@ def einsum_indices(m: int, n: int, target_lanes: Tuple[int]) -> Tuple[str, str, 
     )
     idcs_target = _EINSUM_ALPHABET[:n]
 
-    assert len(idcs_op) + len(idcs_target) < len(_EINSUM_ALPHABET), "too few indices for torch's einsum"
+    assert len(idcs_op) + len(idcs_target) < len(
+        _EINSUM_ALPHABET
+    ), "too few indices for torch's einsum"
 
     idcs_result = ""
-    idcs_op_lut = dict(zip(idcs_op[m:], idcs_op[:m]))  # lookup table from operator's right to operator's left indices
+    idcs_op_lut = dict(
+        zip(idcs_op[m:], idcs_op[:m])
+    )  # lookup table from operator's right to operator's left indices
     for c in idcs_target:
         if c in idcs_op_lut:
             idcs_result += idcs_op_lut[c]
         else:
             idcs_result += c
+
+    return (idcs_op, idcs_target, idcs_result)
+
+
+def einsum_indices_entrywise(m: int, n: int, target_lanes: Tuple[int]) -> Tuple[str, str, str]:
+    assert len(target_lanes) == m, "number of target and operator indices don't match"
+    assert torch.all(tensor(target_lanes) < n), "target lanes not present in state"
+    assert n < len(_EINSUM_ALPHABET), "too few indices for torch's einsum"
+
+    idcs_op = "".join(_EINSUM_ALPHABET[r] for r in target_lanes)
+    idcs_target = _EINSUM_ALPHABET[:n]
+    idcs_result = idcs_target
 
     return (idcs_op, idcs_target, idcs_result)
 
@@ -100,11 +118,24 @@ def apply(op: tensor, psi: tensor, target_lanes: List[int], verbose: bool = Fals
     n = num_state_qubits(psi)
     m = num_operator_qubits(op)
 
-    idcs_op, idcs_target, idcs_result = einsum_indices(m, n, tuple(target_lanes))
+    idcs_op, idcs_target, idcs_result = einsum_indices_op(m, n, tuple(target_lanes))
     idcs_einsum = f"{idcs_op},{idcs_target}->{idcs_result}"
     verbose and print(idcs_einsum)
 
     return torch.einsum(idcs_einsum, op, psi)
+
+
+def apply_entrywise(
+    state_op: tensor, psi: tensor, target_lanes: List[int], verbose: bool = False
+) -> tensor:
+    n = num_state_qubits(psi)
+    m = num_state_qubits(state_op)
+
+    idcs_op, idcs_target, idcs_result = einsum_indices_entrywise(m, n, tuple(target_lanes))
+    idcs_einsum = f"{idcs_op},{idcs_target}->{idcs_result}"
+    verbose and print(idcs_einsum)
+
+    return torch.einsum(idcs_einsum, state_op, psi)
 
 
 def dot(a: tensor, b: tensor) -> tensor:
@@ -120,8 +151,8 @@ def ctrlMat(op: tensor, num_control_lanes: int) -> tensor:
     AB = torch.zeros(2 ** n, 2 ** n)
     BA = torch.zeros(2 ** n, 2 ** n)
     return ctrlMat(
-        torch.cat([torch.cat([A, AB], dim=0), torch.cat([BA, op.reshape(2 ** n, -1)], dim=0)], dim=1).reshape(
-            *[2] * (2 * (n + 1))
-        ),
+        torch.cat(
+            [torch.cat([A, AB], dim=0), torch.cat([BA, op.reshape(2 ** n, -1)], dim=0)], dim=1
+        ).reshape(*[2] * (2 * (n + 1))),
         num_control_lanes - 1,
     )

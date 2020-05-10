@@ -45,7 +45,9 @@ class DataShakespeare(DataFactory):
                 for c in line:
                     if not c in DataShakespeare.VALID_CHARACTERS:
                         c = " "
-                    DataShakespeare._data.append(char_to_bitword(c, DataShakespeare.VALID_CHARACTERS, 5))
+                    DataShakespeare._data.append(
+                        char_to_bitword(c, DataShakespeare.VALID_CHARACTERS, 5)
+                    )
 
     def __init__(self, shard: int, **kwargs):
         super().__init__(shard, **kwargs)
@@ -68,11 +70,15 @@ class DataShakespeare(DataFactory):
         # extract random batch of sentences
         sentences = []
         while len(sentences) < self.batch_size:
-            idx_start = torch.randint(0, len(self._data) - self.sentence_length, (1,), generator=self.rng).item()
+            idx_start = torch.randint(
+                0, len(self._data) - self.sentence_length, (1,), generator=self.rng
+            ).item()
             sentences.append(self._data[idx_start : idx_start + self.sentence_length])
 
         # turn into batch
         return self._sentences_to_batches(sentences)[0]
 
     def to_human(self, target: tensor, offset: int = 0) -> str:
-        return " " * offset + "".join([DataShakespeare.DISPLAY_CHARACTERS[bitword_to_int(c)] for c in target])
+        return " " * offset + "".join(
+            [DataShakespeare.DISPLAY_CHARACTERS[bitword_to_int(c)] for c in target]
+        )

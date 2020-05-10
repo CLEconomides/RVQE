@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from typing import List, Union
+from typing import List, Union, Optional
 
 import os, time
 import torch
@@ -10,7 +10,7 @@ from torch.distributed import ReduceOp
 from torch.utils.tensorboard import SummaryWriter
 from timeit import default_timer as timer
 
-from RVQE.model import RVQE
+from RVQE.model import RVQE, count_parameters
 from RVQE.quantum import tensor
 from RVQE import datasets
 
@@ -60,7 +60,9 @@ class DistributedTrainingEnvironment:
         if hasattr(args, "dataset"):
             self._checkpoint_prefix = f"-{args.tag}-{args.dataset}--{secrets.token_hex(3)}"
 
-        print(f"[{shard}] Hello from shard {shard} in a world of size {self.world_size}! Happy training!")
+        print(
+            f"[{shard}] Hello from shard {shard} in a world of size {self.world_size}! Happy training!"
+        )
 
     def __enter__(self):
         os.environ["MASTER_ADDR"] = "localhost"
@@ -132,7 +134,11 @@ class DistributedTrainingEnvironment:
             }
         )
 
-        filename = f"checkpoint-{self._checkpoint_prefix}-{extra_tag}-" + time.strftime("%Y-%m-%d--%H-%M-%S") + ".tar"
+        filename = (
+            f"checkpoint-{self._checkpoint_prefix}-{extra_tag}-"
+            + time.strftime("%Y-%m-%d--%H-%M-%S")
+            + ".tar"
+        )
         path = os.path.join(self.CHECKPOINT_PATH, filename)
 
         torch.save(kwargs, path)
@@ -195,13 +201,15 @@ def train(shard: int, args):
             dataset = datasets.DataShakespeare(**vars(original_args))
 
         # create model and distribute
-        rvqe = DistributedDataParallel(RVQE(
-            workspace_size=original_args.workspace,
-            input_size=dataset.input_width,
-            stages=original_args.stages,
-            order=original_args.order,
-            degree=original_args.degree,
-        ))
+        rvqe = DistributedDataParallel(
+            RVQE(
+                workspace_size=original_args.workspace,
+                input_size=dataset.input_width,
+                stages=original_args.stages,
+                order=original_args.order,
+                degree=original_args.degree,
+            )
+        )
 
         # create optimizer
         if original_args.optimizer == "sgd":
@@ -229,10 +237,13 @@ def train(shard: int, args):
 
         # cross entropy loss
         _criterion = nn.CrossEntropyLoss()
-        BEST_LOSS_POSSIBLE = -1 + math.log(2 ** dataset.input_width - 1 + math.e)  # see formula for CrossEntropyLoss
+        BEST_LOSS_POSSIBLE = -1 + math.log(
+            2 ** dataset.input_width - 1 + math.e
+        )  # see formula for CrossEntropyLoss
         criterion = lambda *args, **kwargs: _criterion(*args, **kwargs) - BEST_LOSS_POSSIBLE
         print(
-            colorful.validate(f"best possible loss: {BEST_LOSS_POSSIBLE:7.3e}", "magenta"), "automatically subtracted"
+            colorful.validate(f"best possible loss: {BEST_LOSS_POSSIBLE:7.3e}", "magenta"),
+            "automatically subtracted",
         )
 
         # wait for all shards to be happy
@@ -240,10 +251,10 @@ def train(shard: int, args):
 
         if RESUME_MODE:
             print(
-                f"🔄  Resuming session! Model has {len(list(rvqe.parameters()))} parameters, and we start at epoch {epoch_start} with best validation loss {best_validation_loss:7.3e}."
+                f"🔄  Resuming session! Model has {count_parameters(rvqe)} parameters, and we start at epoch {epoch_start} with best validation loss {best_validation_loss:7.3e}."
             )
         else:
-            print(f"⏩  New session! Model has {len(list(rvqe.parameters()))} parameters.")
+            print(f"⏩  New session! Model has {count_parameters(rvqe)} parameters.")
 
         for epoch in range(epoch_start, args.epochs):
             # check if we should timeout
@@ -272,7 +283,9 @@ def train(shard: int, args):
 
             # print loss each few epochs
             if epoch % 1 == 0:
-                print(f"{epoch:04d}/{args.epochs:04d} {timer() - time_start:5.1f}s  loss={loss:7.3e}")
+                print(
+                    f"{epoch:04d}/{args.epochs:04d} {timer() - time_start:5.1f}s  loss={loss:7.3e}"
+                )
 
             # log
             environment.logger.add_scalar("loss/train", loss, epoch)
@@ -296,7 +309,9 @@ def train(shard: int, args):
                         measured_seqs = torch.cat(measured_seqs)
                         validation_loss /= args.num_shards
 
-                        assert len(measured_seqs) == args.num_shards * args.batch_size, "gather failed somehow"
+                        assert (
+                            len(measured_seqs) == args.num_shards * args.batch_size
+                        ), "gather failed somehow"
 
                         logtext = ""
                         for i in range(min(args.num_validation_samples, args.num_shards)):
@@ -322,22 +337,39 @@ def train(shard: int, args):
 
                         character_error_rate = 1 - correct / total
 
-                        print(colorful.bold_validate(f"validation loss:       {validation_loss:7.3e}", "green"))
-                        print(colorful.validate(f"character error rate:  {character_error_rate:.3f}", "green"))
+                        print(
+                            colorful.bold_validate(
+                                f"validation loss:       {validation_loss:7.3e}", "green"
+                            )
+                        )
+                        print(
+                            colorful.validate(
+                                f"character error rate:  {character_error_rate:.3f}", "green"
+                            )
+                        )
 
                         # log
                         environment.logger.add_scalar("loss/validate", validation_loss, epoch)
-                        environment.logger.add_scalar("accuracy/cer_current", character_error_rate, epoch)
+                        environment.logger.add_scalar(
+                            "accuracy/cer_current", character_error_rate, epoch
+                        )
                         environment.logger.add_text("validation_samples", logtext, epoch)
 
-                        if best_character_error_rate is None or character_error_rate < best_character_error_rate:
+                        if (
+                            best_character_error_rate is None
+                            or character_error_rate < best_character_error_rate
+                        ):
                             best_character_error_rate = character_error_rate
-                            environment.logger.add_scalar("accuracy/cer_best", best_character_error_rate, epoch)
+                            environment.logger.add_scalar(
+                                "accuracy/cer_best", best_character_error_rate, epoch
+                            )
 
                         # checkpointing
                         if best_validation_loss is None or validation_loss < best_validation_loss:
                             best_validation_loss = validation_loss
-                            environment.logger.add_scalar("loss/validate_best", best_validation_loss, epoch)
+                            environment.logger.add_scalar(
+                                "loss/validate_best", best_validation_loss, epoch
+                            )
                             checkpoint = environment.save_checkpoint(
                                 rvqe,
                                 optimizer,
@@ -371,7 +403,11 @@ def train(shard: int, args):
             **{"epoch": epoch, "best_validation_loss": best_validation_loss},
         )
         environment.logger.add_hparams(
-            {k: v for k, v in vars(original_args).items() if isinstance(v, (int, float, str, bool, torch.Tensor))},
+            {
+                k: v
+                for k, v in vars(original_args).items()
+                if isinstance(v, (int, float, str, bool, torch.Tensor))
+            },
             {
                 "hparams/epoch": epoch,
                 "hparams/num_parameters": len(list(rvqe.parameters())),
@@ -424,7 +460,11 @@ if __name__ == "__main__":
         "--port", metavar="P", type=int, default=12335, help="port for distributed computing",
     )
     parser.add_argument(
-        "--num-shards", metavar="N", type=int, default=2, help="number of cores to use for parallel processing",
+        "--num-shards",
+        metavar="N",
+        type=int,
+        default=2,
+        help="number of cores to use for parallel processing",
     )
     parser.add_argument(
         "--num-validation-samples",
@@ -433,24 +473,50 @@ if __name__ == "__main__":
         default=2,
         help="number of validation samples to draw each 10 epochs",
     )
-    parser.add_argument("--tag", metavar="TAG", type=str, default="", help="tag for checkpoints and logs")
-    parser.add_argument("--epochs", metavar="EP", type=int, default=5000, help="number of learning epochs")
-    parser.add_argument("--timeout", metavar="TO", type=int, default=None, help="timeout in s after what time to interrupt")
-    parser.add_argument("--stop-at-loss", metavar="SL", type=float, default=None, help="stop at this validation loss")
     parser.add_argument(
-        "--seed", metavar="SEED", type=int, default=82727, help="random seed for parameter initialization"
+        "--tag", metavar="TAG", type=str, default="", help="tag for checkpoints and logs"
+    )
+    parser.add_argument(
+        "--epochs", metavar="EP", type=int, default=5000, help="number of learning epochs"
+    )
+    parser.add_argument(
+        "--timeout",
+        metavar="TO",
+        type=int,
+        default=None,
+        help="timeout in s after what time to interrupt",
+    )
+    parser.add_argument(
+        "--stop-at-loss",
+        metavar="SL",
+        type=float,
+        default=None,
+        help="stop at this validation loss",
+    )
+    parser.add_argument(
+        "--seed",
+        metavar="SEED",
+        type=int,
+        default=82727,
+        help="random seed for parameter initialization",
     )
 
     subparsers = parser.add_subparsers(help="available commands")
 
-    parser_train = subparsers.add_parser("train", formatter_class=argparse.ArgumentDefaultsHelpFormatter,)
+    parser_train = subparsers.add_parser(
+        "train", formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     parser_train.set_defaults(func=command_train)
     parser_train.add_argument(
         "--workspace", metavar="W", type=int, default=3, help="qubits to use as workspace",
     )
     parser_train.add_argument("--stages", metavar="S", type=int, default=2, help="RVQE cell stages")
-    parser_train.add_argument("--order", metavar="O", type=int, default=2, help="order of activation function")
-    parser_train.add_argument("--degree", metavar="O", type=int, default=2, help="degree of quantum neuron")
+    parser_train.add_argument(
+        "--order", metavar="O", type=int, default=2, help="order of activation function"
+    )
+    parser_train.add_argument(
+        "--degree", metavar="O", type=int, default=2, help="degree of quantum neuron"
+    )
     parser_train.add_argument(
         "--dataset",
         metavar="D",
@@ -459,19 +525,33 @@ if __name__ == "__main__":
         help="dataset; choose between simple-seq, simple-quotes, elman-xor, elman-letter and shakespeare",
     )
     parser_train.add_argument(
-        "--sentence-length", metavar="SL", type=int, default=20, help="sentence length for data generators",
+        "--sentence-length",
+        metavar="SL",
+        type=int,
+        default=20,
+        help="sentence length for data generators",
     )
     parser_train.add_argument(
         "--batch-size", metavar="B", type=int, default=1, help="batch size",
     )
     parser_train.add_argument(
-        "--optimizer", metavar="OPT", type=str, default="rmsprop", help="optimizer; one of sgd, adam or rmsprop",
+        "--optimizer",
+        metavar="OPT",
+        type=str,
+        default="rmsprop",
+        help="optimizer; one of sgd, adam or rmsprop",
     )
     parser_train.add_argument(
-        "--learning-rate", metavar="LR", type=float, default="0.003", help="learning rate for optimizer",
+        "--learning-rate",
+        metavar="LR",
+        type=float,
+        default="0.003",
+        help="learning rate for optimizer",
     )
 
-    parser_resume = subparsers.add_parser("resume", formatter_class=argparse.ArgumentDefaultsHelpFormatter,)
+    parser_resume = subparsers.add_parser(
+        "resume", formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     parser_resume.set_defaults(func=command_resume)
     parser_resume.add_argument("filename", type=str, help="checkpoint filename")
 

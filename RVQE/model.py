@@ -3,6 +3,7 @@ from typing import Tuple, List, Dict, Optional, Union
 from .compound_layers import (
     UnitaryLayer,
     QuantumNeuronLayer,
+    FastQuantumNeuronLayer,
     BitFlipLayer,
     PostselectManyLayer,
 )
@@ -13,13 +14,28 @@ import torch
 from torch import nn
 
 
+def count_parameters(model: nn.Module):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
 class RVQECell(nn.Module):
-    def __init__(self, *, workspace_size: int, input_size: int, stages: int, order: int = 2, degree: int = 2):
+    def __init__(
+        self,
+        *,
+        workspace_size: int,
+        input_size: int,
+        stages: int,
+        order: int = 2,
+        degree: int = 2,
+        fast: bool = True,
+    ):
         """
             by default we set up the qubit indices to be
-            ancillas, workspace, input
+            input, workspace, ancillas
         """
-        assert workspace_size >= 1 and input_size >= 1 and stages >= 1 and order >= 1, "all parameters have to be >= 1"
+        assert (
+            workspace_size >= 1 and input_size >= 1 and stages >= 1 and order >= 1
+        ), "all parameters have to be >= 1"
 
         super().__init__()
 
@@ -27,14 +43,23 @@ class RVQECell(nn.Module):
         self.order = order
         self.degree = degree
 
-        self.ancillas = list(range(0, order))
-        self.workspace = list(range(order, order + workspace_size))
-        self.inout = list(range(order + workspace_size, order + workspace_size + input_size))
+        QNL_T = FastQuantumNeuronLayer if fast else QuantumNeuronLayer
+        ancilla_count = QNL_T.ancillas_for_order(order)
+
+        self.inout = list(range(0, input_size))
+        self.workspace = list(range(input_size, input_size + workspace_size))
+        self.ancillas = list(
+            range(input_size + workspace_size, input_size + workspace_size + ancilla_count)
+        )
 
         self.input_layer = nn.Sequential(
             *[
-                QuantumNeuronLayer(
-                    workspace=self.workspace + self.inout, outlane=out, ancillas=self.ancillas, degree=degree
+                QNL_T(
+                    workspace=self.workspace + self.inout,
+                    outlane=out,
+                    order=order,
+                    ancillas=self.ancillas,
+                    degree=degree,
                 )
                 for out in self.workspace
             ]
@@ -44,7 +69,12 @@ class RVQECell(nn.Module):
                 nn.Sequential(
                     UnitaryLayer(self.workspace),
                     *[
-                        QuantumNeuronLayer(workspace=self.workspace + self.inout, outlane=out, ancillas=self.ancillas)
+                        QNL_T(
+                            workspace=self.workspace + self.inout,
+                            outlane=out,
+                            order=order,
+                            ancillas=self.ancillas,
+                        )
                         for out in self.workspace
                     ],
                 )
@@ -53,7 +83,12 @@ class RVQECell(nn.Module):
         )
         self.output_layer = nn.Sequential(
             *[
-                QuantumNeuronLayer(workspace=self.workspace + self.inout, outlane=out, ancillas=self.ancillas)
+                QNL_T(
+                    workspace=self.workspace + self.inout,
+                    outlane=out,
+                    order=order,
+                    ancillas=self.ancillas,
+                )
                 for out in self.inout
             ]
         )
@@ -103,7 +138,9 @@ class RVQE(nn.Module):
             return torch.stack(batch_probs).transpose(1, 2), torch.stack(batch_measured_seq)
 
         # normal call
-        assert inputs.dim() == 2, "inputs have to have dimension 3 (1st batch) or 2 (list of int lists)"
+        assert (
+            inputs.dim() == 2
+        ), "inputs have to have dimension 3 (1st batch) or 2 (list of int lists)"
 
         psi = ket0(self.cell.num_qubits)
         probs = []
@@ -118,7 +155,9 @@ class RVQE(nn.Module):
                 measure = trgt
             else:
                 output_distribution = torch.distributions.Categorical(probs=p)
-                measure = tensor(int_to_bitword(output_distribution.sample(), width=len(self.cell.inout)))
+                measure = tensor(
+                    int_to_bitword(output_distribution.sample(), width=len(self.cell.inout))
+                )
 
             measured_seq.append(measure)
             psi = PostselectManyLayer(self.cell.inout, measure).forward(psi)

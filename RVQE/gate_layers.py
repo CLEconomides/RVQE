@@ -46,7 +46,9 @@ class GateLayer(nn.Module):
         n = num_operator_qubits(self.U)
         basis = list(itertools.product("01", repeat=n))
 
-        out = tensor([[dot(ket("".join(x)), self.forward(ket("".join(y)))) for x in basis] for y in basis])
+        out = tensor(
+            [[dot(ket("".join(x)), self.forward(ket("".join(y)))) for x in basis] for y in basis]
+        )
 
         return out
 
@@ -70,19 +72,27 @@ class rYLayer(GateLayer):
         super().__init__()
 
         self.lanes = [target_lane]
-        self.θ = nn.Parameter(tensor(initial_θ, requires_grad=True))
+        self.θ = nn.Parameter(tensor(initial_θ))
 
     @property
     def U(self) -> tensor:
         # note: these matrices are TRANSPOSED! in this notation
         θ = self.θ
         return torch.stack(
-            [torch.stack([(0.5 * θ).cos(), (-0.5 * θ).sin()]), torch.stack([(0.5 * θ).sin(), (0.5 * θ).cos()]),]
+            [
+                torch.stack([(0.5 * θ).cos(), (-0.5 * θ).sin()]),
+                torch.stack([(0.5 * θ).sin(), (0.5 * θ).cos()]),
+            ]
         )
 
 
 class crYLayer(GateLayer):
-    def __init__(self, control_lane: Union[int, List[int], Tuple[int]], target_lane: int, initial_φ: float = 1.0):
+    def __init__(
+        self,
+        control_lane: Union[int, List[int], Tuple[int]],
+        target_lane: int,
+        initial_φ: float = 1.0,
+    ):
         super().__init__()
 
         if isinstance(control_lane, int):
@@ -90,14 +100,17 @@ class crYLayer(GateLayer):
         else:  # assume a list of control lanes given
             self.lanes = [*control_lane, target_lane]
 
-        self.φ = nn.Parameter(tensor(initial_φ, requires_grad=True))
+        self.φ = nn.Parameter(tensor(initial_φ))
 
     @property
     def U(self) -> tensor:
         # note: these matrices are TRANSPOSED! in this notation
         φ = self.φ
         rY = torch.stack(
-            [torch.stack([(0.5 * φ).cos(), (-0.5 * φ).sin()]), torch.stack([(0.5 * φ).sin(), (0.5 * φ).cos()]),]
+            [
+                torch.stack([(0.5 * φ).cos(), (-0.5 * φ).sin()]),
+                torch.stack([(0.5 * φ).sin(), (0.5 * φ).cos()]),
+            ]
         )
         return ctrlMat(rY, len(self.lanes) - 1)
 
@@ -110,7 +123,12 @@ class cmiYLayer(GateLayer):
 
         # note: these matrices are TRANSPOSED! in this notation
         self.U = tensor(
-            [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0], [0.0, 0.0, -1.0, 0.0],]
+            [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+                [0.0, 0.0, -1.0, 0.0],
+            ]
         ).T.reshape(2, 2, 2, 2)
 
 

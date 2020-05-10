@@ -30,6 +30,7 @@ colorful.use_palette(
         "gold": "#EDC835",
         "validate": "#7EBE7B",
         "faint": "#606060",
+        "quantum": "#a090a0"
     }
 )
 
@@ -271,14 +272,16 @@ def train(shard: int, args):
             time_start = timer()
             # advance by one training batch
             loss = None
+            min_postsel_prob = None
             sentences, targets = dataset.next_batch()
 
             def loss_closure():
                 nonlocal loss  # write to loss outside closure
                 nonlocal targets
+                nonlocal min_postsel_prob
 
                 optimizer.zero_grad()
-                probs, _ = rvqe(sentences, targets, postselect_measurement=True)
+                probs, _, min_postsel_prob = rvqe(sentences, targets, postselect_measurement=True)
                 _probs = dataset.filter(probs, dim=2)
                 _targets = dataset.filter(data.skip_first(targets), dim=1)
                 loss = criterion(
@@ -294,26 +297,30 @@ def train(shard: int, args):
             if epoch % 1 == 0:
                 print(
                     f"{epoch:04d}/{args.epochs:04d} {timer() - time_start:5.1f}s  loss={loss:7.3e}"
+                    + colorful.quantum(f"  (ps_min={min_postsel_prob:7.3e})")
                 )
 
             # log
             environment.logger.add_scalar("loss/train", loss, epoch)
+            environment.logger.add_scalar("min_postsel_prob/train", min_postsel_prob, epoch)
             environment.logger.add_scalar("time", timer() - time_start, epoch)
 
             # print samples every few epochs or the last round
             if epoch % 10 == 0 or epoch == args.epochs - 1:
                 with torch.no_grad():
                     # run entire batch through the network without postselecting measurements
-                    measured_probs, measured_sequences = rvqe(
+                    measured_probs, measured_sequences, min_postsel_prob = rvqe(
                         sentences, targets, postselect_measurement=dataset.ignore_output_at_step
                     )
                     _probs = dataset.filter(measured_probs, dim=2)
                     _targets = dataset.filter(data.skip_first(targets), dim=1)
                     validation_loss = criterion(_probs, data.targets_for_loss(_targets))
+                    min_postsel_prob = tensor(min_postsel_prob)
 
                     # collect in main shard
                     sentences = environment.gather(sentences)
                     targets = environment.gather(targets)
+                    min_postsel_prob = environment.gather(min_postsel_prob)
                     measured_sequences = environment.gather(measured_sequences)
                     validation_loss = environment.reduce(validation_loss, ReduceOp.SUM)
 
@@ -321,6 +328,7 @@ def train(shard: int, args):
                         sentences = torch.cat(sentences)
                         targets = torch.cat(targets)
                         measured_sequences = torch.cat(measured_sequences)
+                        min_postsel_prob = torch.stack(min_postsel_prob).min()
                         validation_loss /= args.num_shards
 
                         assert (
@@ -348,17 +356,23 @@ def train(shard: int, args):
 
                         print(
                             colorful.bold_validate(
-                                f"validation loss:       {validation_loss:7.3e}", "green"
+                                f"validation loss:       {validation_loss:7.3e}"
                             )
                         )
                         print(
                             colorful.validate(
-                                f"character error rate:  {character_error_rate:.3f}", "green"
+                                f"character error rate:  {character_error_rate:.3f}"
+                            )
+                        )
+                        print(
+                            colorful.quantum(
+                                f"minimum ps prob:       {min_postsel_prob:7.3e}"
                             )
                         )
 
                         # log
                         environment.logger.add_scalar("loss/validate", validation_loss, epoch)
+                        environment.logger.add_scalar("min_postsel_prob/validate", min_postsel_prob, epoch)
                         environment.logger.add_scalar(
                             "accuracy/character_error_rate_current", character_error_rate, epoch
                         )

@@ -8,7 +8,7 @@ from .compound_layers import (
     PostselectManyLayer,
 )
 from .quantum import tensor, ket0, probabilities, num_state_qubits
-from .data import zip_with_offset, int_to_bitword, Bitword
+from .data import zip_with_offset, int_to_bitword, bitword_to_int, Bitword
 
 import torch
 from torch import nn
@@ -129,7 +129,7 @@ class RVQE(nn.Module):
         inputs: tensor,
         targets: tensor,
         postselect_measurement: Union[bool, Callable[[int], bool]],
-    ) -> Tuple[tensor, list]:
+    ) -> Tuple[tensor, tensor, float]:
         if isinstance(postselect_measurement, bool):
             # return callback that gives constant
             _postselect_measurement = postselect_measurement
@@ -140,13 +140,15 @@ class RVQE(nn.Module):
             assert targets.dim() == 3, "inputs have dimension 3, but targets not"
             batch_measured_seq = []
             batch_probs = []
+            min_postsel_prob = 1.
             for inpt, trgt in zip(inputs, targets):
-                probs, measured_seq = self.forward(inpt, trgt, postselect_measurement)
+                probs, measured_seq, _min_postel_prob = self.forward(inpt, trgt, postselect_measurement)
                 batch_probs.append(probs)
                 batch_measured_seq.append(measured_seq)
+                min_postsel_prob = min(min_postsel_prob, _min_postel_prob)
 
             # we transpose the batch_probs such that the len dimension comes last
-            return torch.stack(batch_probs).transpose(1, 2), torch.stack(batch_measured_seq)
+            return torch.stack(batch_probs).transpose(1, 2), torch.stack(batch_measured_seq), min_postsel_prob
 
         # normal call
         assert (
@@ -156,6 +158,7 @@ class RVQE(nn.Module):
         psi = ket0(self.cell.num_qubits)
         probs = []
         measured_seq = []
+        min_postsel_prob = 1.
 
         for i, (inpt, trgt) in enumerate(zip_with_offset(inputs, targets)):
             p, psi = self.cell.forward(psi, inpt)
@@ -164,6 +167,7 @@ class RVQE(nn.Module):
             # measure output
             if postselect_measurement(i, trgt):
                 measure = trgt
+                min_postsel_prob = min(min_postsel_prob, p[bitword_to_int(measure)])
             else:
                 output_distribution = torch.distributions.Categorical(probs=p)
                 measure = tensor(
@@ -178,4 +182,4 @@ class RVQE(nn.Module):
 
         probs = torch.stack(probs)
         measured_seq = torch.stack(measured_seq)
-        return probs, measured_seq
+        return probs, measured_seq, min_postsel_prob

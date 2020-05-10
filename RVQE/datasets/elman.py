@@ -33,7 +33,7 @@ class DataElmanXOR(DataFactory):
 
     @property
     def input_width(self) -> tensor:
-        return 1
+        return 2
 
     def next_batch(self) -> Batch:
         # extract random batch of xor sequences like 011 101 110 000 ...
@@ -45,8 +45,8 @@ class DataElmanXOR(DataFactory):
             for _ in range(0, self.sentence_length, 3):
                 a, b = torch.randint(0, 2, (2,), generator=self.rng).tolist()
                 c = a ^ b
-                sentence += [[a], [b], [c]]
-                target += [0, 0, c]
+                sentence += [[a, 1], [b, 1], [c, 0]]
+                target += [2, 2, c]
             sentence = sentence[: self.sentence_length]
             target = target[: self.sentence_length]
 

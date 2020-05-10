@@ -342,7 +342,8 @@ def train(shard: int, args):
 
                         # character error rate
                         character_error_rate = data.character_error_rate(
-                            measured_sequences, data.skip_first(targets)
+                            dataset.filter(measured_sequences, dim=1),
+                            dataset.filter(data.skip_first(targets), dim=1)
                         )
 
                         print(

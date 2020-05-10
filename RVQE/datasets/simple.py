@@ -21,7 +21,7 @@ class DataSimpleSequences(DataFactory):
             constant_sentence(self.sentence_length, [1, 0, 0]),
         ]
 
-        self._batches_data = self._sentences_to_batches(sentences)
+        self._batches_data = self._sentences_to_batches(sentences, targets=sentences)
 
     @property
     def _batches(self) -> List[Batch]:
@@ -58,7 +58,7 @@ class DataSimpleQuotes(DataFactory):
             for sentence in sentences
         ]
 
-        self._batches_data = self._sentences_to_batches(sentences)
+        self._batches_data = self._sentences_to_batches(sentences, targets=sentences)
 
     @property
     def _batches(self) -> List[Batch]:

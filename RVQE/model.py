@@ -1,4 +1,4 @@
-from typing import Tuple, List, Dict, Optional, Union
+from typing import Tuple, List, Dict, Optional, Union, Callable
 
 from .compound_layers import (
     UnitaryLayer,
@@ -8,7 +8,7 @@ from .compound_layers import (
     PostselectManyLayer,
 )
 from .quantum import tensor, ket0, probabilities, num_state_qubits
-from .data import pairwise, int_to_bitword, Bitword
+from .data import zip_with_offset, int_to_bitword, Bitword
 
 import torch
 from torch import nn
@@ -124,13 +124,19 @@ class RVQE(nn.Module):
         super().__init__()
         self.cell = RVQECell(**kwargs)
 
-    def forward(self, inputs: tensor, postselect_measurement: bool = True) -> Tuple[tensor, list]:
+    def forward(self, inputs: tensor, targets: tensor, postselect_measurement: Union[bool, Callable[[int], bool]]) -> Tuple[tensor, list]:
+        if isinstance(postselect_measurement, bool):
+            # return callback that gives constant
+            _postselect_measurement = postselect_measurement
+            postselect_measurement = lambda _, __: _postselect_measurement
+
         # batched call; return stacked result
         if inputs.dim() == 3:
+            assert targets.dim() == 3, "inputs have dimension 3, but targets not"
             batch_measured_seq = []
             batch_probs = []
-            for inpt in inputs:
-                probs, measured_seq = self.forward(inpt, postselect_measurement)
+            for inpt, trgt in zip(inputs, targets):
+                probs, measured_seq = self.forward(inpt, trgt, postselect_measurement)
                 batch_probs.append(probs)
                 batch_measured_seq.append(measured_seq)
 
@@ -139,19 +145,19 @@ class RVQE(nn.Module):
 
         # normal call
         assert (
-            inputs.dim() == 2
+            inputs.dim() == 2 and targets.dim() == 2
         ), "inputs have to have dimension 3 (1st batch) or 2 (list of int lists)"
 
         psi = ket0(self.cell.num_qubits)
         probs = []
         measured_seq = []
 
-        for inpt, trgt in pairwise(inputs):
+        for i, (inpt, trgt) in enumerate(zip_with_offset(inputs, targets)):
             p, psi = self.cell.forward(psi, inpt)
             probs.append(p)
 
             # measure output
-            if postselect_measurement:
+            if postselect_measurement(i, trgt):
                 measure = trgt
             else:
                 output_distribution = torch.distributions.Categorical(probs=p)

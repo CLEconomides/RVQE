@@ -24,7 +24,7 @@ import secrets
 # colorful printing
 
 colorful.use_palette(
-    {"background": "#0B2A71", "white": "#ffffff", "gold": "#EDC835", "validate": "#7EBE7B",}
+    {"background": "#0B2A71", "white": "#ffffff", "gold": "#EDC835", "validate": "#7EBE7B", "faint": "#606060"}
 )
 
 
@@ -272,9 +272,10 @@ def train(shard: int, args):
                 nonlocal targets
 
                 optimizer.zero_grad()
-                probs, _ = rvqe(sentences, postselect_measurement=True)
-                _probs, _targets = dataset.filter(probs, targets[:, 1:])
-                loss = criterion(_probs, _targets)  # the model never predicts the first token
+                probs, _ = rvqe(sentences, targets, postselect_measurement=True)
+                _probs = dataset.filter(probs, dim=2)
+                _targets = dataset.filter(data.skip_first(targets), dim=1)
+                loss = criterion(_probs, data.targets_for_loss(_targets))  # the model never predicts the first token
                 loss.backward()
 
                 return loss
@@ -295,41 +296,43 @@ def train(shard: int, args):
             if epoch % 10 == 0 or epoch == args.epochs - 1:
                 with torch.no_grad():
                     # run entire batch through the network without postselecting measurements
-                    measured_probs, measured_seqs = rvqe(sentences, postselect_measurement=False)
-                    _probs, _targets = dataset.filter(measured_probs, targets[:, 1:])
-                    validation_loss = criterion(_probs, _targets)
+                    measured_probs, measured_sequences = rvqe(sentences, targets, postselect_measurement=dataset.ignore_output_at_step)
+                    _probs = dataset.filter(measured_probs, dim=2)
+                    _targets = dataset.filter(data.skip_first(targets), dim=1)
+                    validation_loss = criterion(_probs, data.targets_for_loss(_targets))
 
                     # collect in main shard
                     sentences = environment.gather(sentences)
                     targets = environment.gather(targets)
-                    measured_seqs = environment.gather(measured_seqs)
+                    measured_sequences = environment.gather(measured_sequences)
                     validation_loss = environment.reduce(validation_loss, ReduceOp.SUM)
 
                     if shard == 0:
                         sentences = torch.cat(sentences)
                         targets = torch.cat(targets)
-                        measured_seqs = torch.cat(measured_seqs)
+                        measured_sequences = torch.cat(measured_sequences)
                         validation_loss /= args.num_shards
 
                         assert (
-                            len(measured_seqs) == args.num_shards * args.batch_size
+                            len(measured_sequences) == args.num_shards * args.batch_size
                         ), "gather failed somehow"
 
                         logtext = ""
                         for i in range(min(args.num_validation_samples, args.num_shards)):
-                            seq = measured_seqs[i]
-                            sen = sentences[i]
-
-                            text = f"gold = { dataset.to_human(sen) }"
+                            if (targets[i] != sentences[i]).any():
+                                text = f"inpt = { dataset.to_human(sentences[i]) }"
+                                print(colorful.faint(text))
+                                logtext += "    " + text + "\r\n"
+                            text = f"gold = { dataset.to_human(targets[i]) }"
                             print(colorful.gold(text))
                             logtext += "    " + colorless(text) + "\r\n"
-                            text = f"pred = { dataset.to_human(seq, offset=1) }"
+                            text = f"pred = { dataset.to_human(measured_sequences[i], offset=1) }"
                             print(text)
                             logtext += "    " + colorless(text) + "\r\n"
 
                         # character error rate
                         character_error_rate = data.character_error_rate(
-                            measured_seqs, targets[:, 1:]
+                            measured_sequences, data.skip_first(targets)
                         )
 
                         print(
@@ -426,6 +429,11 @@ def command_train(args):
     }
     assert args.dataset in datasets, "invalid dataset"
     assert args.optimizer in {"sgd", "adam", "rmsprop", "lbfgs"}, "invalid optimizer"
+
+    if args.dataset == "simple-seq":
+        assert args.num_shards == 2 and args.batch_size == 1 or args.num_shards == 1 and args.batch_size == 2
+    if args.dataset == "simple-quotes":
+        assert args.num_shards == 5 and args.batch_size == 1 or args.num_shards == 1 and args.batch_size == 5
 
     if args.num_shards == 1:
         train(0, args)

@@ -9,13 +9,11 @@ Bitword = NewType("Bitword", List[int])  # e.g. [0, 1, 1]
 Batch = NewType("Batch", Tuple[tensor, tensor])
 
 
-def pairwise(iterable):
+def zip_with_offset(a: tensor, b: tensor, offset: int = 1):
     """
-        s -> (s0,s1), (s1,s2), (s2, s3), ...
+        s -> (a0,b1), (a1,b2), (a2, b3), ...
     """
-    a, b = itertools.tee(iterable)
-    next(b, None)
-    return zip(a, b)
+    return zip(a, b[offset:])
 
 
 def bitword_to_int(lst: Union[Bitword, tensor]) -> int:
@@ -50,17 +48,41 @@ def char_to_bitword(char: str, characters: str, width: int) -> Bitword:
 
 
 # character error rate
-def character_error_rate(sentence: tensor, target: tensor) -> float:
+def character_error_rate(sequence: tensor, target: tensor) -> float:
     """
         we assume that sequence and target align 1:1
     """
-    if target.dim() == 1:  # no batch
-        assert sentence.dim() == 2, "sentence has to have dimension 2 if no batch given"
-        target = target.unsqueeze(0)
-        sentence = sentence.unsqueeze(0)
-    sentence = tensor([[bitword_to_int(bw) for bw in sen] for sen in sentence])
-    return (sentence == target).to(float).mean()
+    assert target.dim() == sequence.dim()
+    return 1. - (sequence == target).to(float).mean()
 
+
+# target preprocessing helper functions
+def targets_for_loss(sentences: tensor):
+    """
+        batch is B x L x W or just L x W
+        B - batch
+        L - sentence length
+        W - word width
+    """
+    if sentences.dim() == 2:
+        sentences = batch.unsqueeze(0)
+    assert sentences.dim() == 3
+
+    return tensor([
+        [bitword_to_int(word) for word in sentence]
+        for sentence in sentences
+    ])
+
+
+def skip_first(targets: tensor) -> tensor:
+    """
+        we never measure the first one, so skip that
+        we assume B x L x W
+        B - batch
+        L - sentence length
+        W - word width
+    """
+    return targets[:, 1:]
 
 # data loader for distributed environment
 from abc import ABC, abstractmethod
@@ -84,12 +106,8 @@ class DataFactory(ABC):
 
         return batch
 
-    @staticmethod
-    def _sentence_to_target(sentence: List[Bitword]) -> List[int]:
-        return [bitword_to_int(word) for word in sentence]
-
-    def _sentences_to_batches(self, sentences: List[List[Bitword]]) -> List[Batch]:
-        targets = tensor([DataFactory._sentence_to_target(sentence) for sentence in sentences])
+    def _sentences_to_batches(self, sentences: List[List[Bitword]], targets: List[List[Bitword]]) -> List[Batch]:
+        targets = tensor(targets)
         sentences = tensor(sentences)
 
         # split into batch-sized chunks
@@ -97,6 +115,9 @@ class DataFactory(ABC):
         sentences = torch.split(sentences, self.batch_size)
 
         return list(zip(sentences, targets))
+
+    def _sentences_to_batch(self, sentences: List[List[Bitword]], targets: List[List[Bitword]]) -> Batch:
+        return self._sentences_to_batches(sentences, targets)[0]
 
     @property
     @abstractmethod
@@ -116,8 +137,15 @@ class DataFactory(ABC):
         """
         pass
 
-    def filter(self, sentence: tensor, output: tensor) -> Tuple[tensor, tensor]:
-        return sentence, output
+    def filter(self, sequence: tensor, dim: int) -> tensor:
+        return sequence
 
     def filter_sentence(self, sentence: tensor) -> tensor:
         return sentence
+
+    def ignore_output_at_step(self, index: int, target: Union[Bitword, tensor]) -> bool:
+        """
+            return True if the output at this step is not expected
+            to be a specific target; which means we can postselect it (using OAA)
+        """
+        return False

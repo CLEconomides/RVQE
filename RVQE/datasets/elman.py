@@ -46,7 +46,7 @@ class DataElmanXOR(DataFactory):
                 a, b = torch.randint(0, 2, (2,), generator=self.rng).tolist()
                 c = a ^ b
                 sentence += [[0, a], [0, b], [0, c]]
-                target += [2, 2, c]
+                target += [[1, 0], [1, 0], [0, c]]
             sentence = sentence[: self.sentence_length]
             target = target[: self.sentence_length]
 
@@ -54,12 +54,13 @@ class DataElmanXOR(DataFactory):
             targets.append(target)
 
         # turn into batch
-        return tensor(sentences), tensor(targets)
+        return self._sentences_to_batch(sentences, targets)
+
 
     def to_human(self, target: tensor, offset: int = 0) -> str:
         def to_str(item: tensor) -> str:
             item = bitword_to_int(item)
-            return "·" if item == 2 else str(item)
+            return str(item) if item != 2 else "·"
 
         def style_triple(triple: List[int]) -> str:
             if len(triple) > 0:
@@ -78,28 +79,30 @@ class DataElmanXOR(DataFactory):
                 [style_triple(triple.tolist()) for triple in torch.split(target[2:], 3)]
             )
 
-    def filter(self, probs: tensor, targets: tensor) -> Tuple[tensor, tensor]:
+    def filter(self, sequence: tensor, dim: int) -> tensor:
         """
-            2d tensor of probabilities (len x classes) when measured and corresponding 1d tensor of targets (len), i.e. len first, or
-            batch thereof (batch x classes x len) and (batch x len), respectively, i.e. len last
-
             we expect these to be offset by 1 from a proper output, i.e.
             01 110 000 011
              |   |   |   |
+            and skip all elements other than that in the given direction
         """
-        return probs, targets
+        assert sequence.dim() == 3 and dim in [1, 2]
 
-        if probs.dim() == 3:
-            assert targets.dim() == 2, "discovered batch but target dimensions don't work"
-            return probs[:, :, 1::3], targets[:, 1::3]
-        else:
-            assert (
-                probs.dim() == 2 and targets.dim() == 1
-            ), "no batch discovered but dimensions don't work"
-            return probs[1::3], targets[1::3]
+        if dim == 1:
+            return sequence[:, 1::3, :]
+        elif dim == 2:
+            return sequence[:, :, 1::3]
 
     def filter_sentence(self, sentence: tensor) -> tensor:
         return sentence[1::3]
+
+    def ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
+        """
+            return True for the steps
+            01 110 000 011
+            |  ||  ||  || 
+        """
+        return (index + 2) % 3 != 0
 
 
 class DataElmanLetter(DataFactory):
@@ -131,12 +134,12 @@ class DataElmanLetter(DataFactory):
     }
 
     TARGET_LUT = {
-        "b": 0,  # marker for arbitrary consonant
-        "d": 0,
-        "g": 0,
-        "a": bitword_to_int(BITWORD_LUT["a"]),
-        "i": bitword_to_int(BITWORD_LUT["i"]),
-        "u": bitword_to_int(BITWORD_LUT["u"]),
+        "b": [0]*6,  # marker for arbitrary consonant
+        "d": [0]*6,
+        "g": [0]*6,
+        "a": BITWORD_LUT["a"],
+        "i": BITWORD_LUT["i"],
+        "u": BITWORD_LUT["u"],
     }
 
     def __init__(self, shard: int, **kwargs):
@@ -172,7 +175,7 @@ class DataElmanLetter(DataFactory):
             targets.append(target)
 
         # turn into batch
-        return tensor(sentences), tensor(targets)
+        return self._sentences_to_batch(sentences, targets)
 
     INVERSE_TARGET_LUT = {
         41: " b",
@@ -181,7 +184,7 @@ class DataElmanLetter(DataFactory):
         19: "a",
         21: "i",
         23: "u",
-        0: " ₀",  # extra marker for target when we expect a consonant
+        0: " ·",  # extra marker for target when we expect a consonant
     }
 
     def to_human(self, target: tensor, offset: int = 0) -> str:
@@ -196,3 +199,9 @@ class DataElmanLetter(DataFactory):
 
         # if we start with a consonant, trim one space off
         return out if target[0] not in [41, 45, 43, 0] else out[1:]
+
+    def ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
+        """
+            return True for consonant targets
+        """
+        return bitword_to_int(target) in [41, 45, 43]

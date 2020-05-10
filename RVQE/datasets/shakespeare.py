@@ -76,7 +76,7 @@ class DataShakespeare(DataFactory):
             sentences.append(self._data[idx_start : idx_start + self.sentence_length])
 
         # turn into batch
-        return self._sentences_to_batches(sentences)[0]
+        return self._sentences_to_batch(sentences, targets=sentences)
 
     def to_human(self, target: tensor, offset: int = 0) -> str:
         return " " * offset + "".join(

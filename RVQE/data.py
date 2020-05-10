@@ -53,7 +53,7 @@ def character_error_rate(sequence: tensor, target: tensor) -> float:
         we assume that sequence and target align 1:1
     """
     assert target.dim() == sequence.dim()
-    return 1.0 - (sequence == target).to(float).mean()
+    return 1.0 - (sequence == target).all(dim=-1).to(float).mean()
 
 
 # target preprocessing helper functions

@@ -10,9 +10,8 @@ def alternating_sentence(length: int, constants: List[Bitword]) -> List[Bitword]
 
 
 class DataSimpleSequences(DataFactory):
-    def __init__(self, shard: int, num_shards: int, **kwargs):
-        kwargs.update({"batch_size": max(1, 2 // num_shards)})
-        super().__init__(shard, num_shards=num_shards, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         sentences = [
             alternating_sentence(
@@ -40,9 +39,8 @@ class DataSimpleQuotes(DataFactory):
     DISPLAY_CHARACTERS = "abcdefghijklmnopqrstuvwxyz,.?! ¶"
     assert len(VALID_CHARACTERS) <= 32, "characters should fit into 5 bits"
 
-    def __init__(self, shard: int, num_shards: int, **kwargs):
-        kwargs.update({"batch_size": max(1, 5 // num_shards)})
-        super().__init__(shard, num_shards=num_shards, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         sentences = [
             "to keep your balance, you must keep moving",  # Albert Einstein

@@ -30,7 +30,7 @@ colorful.use_palette(
         "gold": "#EDC835",
         "validate": "#7EBE7B",
         "faint": "#606060",
-        "quantum": "#a090a0"
+        "quantum": "#a090a0",
     }
 )
 
@@ -351,28 +351,22 @@ def train(shard: int, args):
                         # character error rate
                         character_error_rate = data.character_error_rate(
                             dataset.filter(measured_sequences, dim=1),
-                            dataset.filter(data.skip_first(targets), dim=1)
+                            dataset.filter(data.skip_first(targets), dim=1),
                         )
 
                         print(
-                            colorful.bold_validate(
-                                f"validation loss:       {validation_loss:7.3e}"
-                            )
+                            colorful.bold_validate(f"validation loss:       {validation_loss:7.3e}")
                         )
                         print(
-                            colorful.validate(
-                                f"character error rate:  {character_error_rate:.3f}"
-                            )
+                            colorful.validate(f"character error rate:  {character_error_rate:.3f}")
                         )
-                        print(
-                            colorful.quantum(
-                                f"minimum ps prob:       {min_postsel_prob:7.3e}"
-                            )
-                        )
+                        print(colorful.quantum(f"minimum ps prob:       {min_postsel_prob:7.3e}"))
 
                         # log
                         environment.logger.add_scalar("loss/validate", validation_loss, epoch)
-                        environment.logger.add_scalar("min_postsel_prob/validate", min_postsel_prob, epoch)
+                        environment.logger.add_scalar(
+                            "min_postsel_prob/validate", min_postsel_prob, epoch
+                        )
                         environment.logger.add_scalar(
                             "accuracy/character_error_rate_current", character_error_rate, epoch
                         )
@@ -456,19 +450,9 @@ def command_train(args):
     assert args.optimizer in {"sgd", "adam", "rmsprop", "lbfgs"}, "invalid optimizer"
 
     if args.dataset == "simple-seq":
-        assert (
-            args.num_shards == 2
-            and args.batch_size == 1
-            or args.num_shards == 1
-            and args.batch_size == 2
-        )
+        assert (args.num_shards, args.batch_size) in [(2, 1), (1, 2)]
     if args.dataset == "simple-quotes":
-        assert (
-            args.num_shards == 5
-            and args.batch_size == 1
-            or args.num_shards == 1
-            and args.batch_size == 5
-        )
+        assert (args.num_shards, args.batch_size) in [(6, 1), (3, 2), (2, 3), (1, 6)]
 
     if args.num_shards == 1:
         train(0, args)

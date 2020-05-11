@@ -140,15 +140,21 @@ class RVQE(nn.Module):
             assert targets.dim() == 3, "inputs have dimension 3, but targets not"
             batch_measured_seq = []
             batch_probs = []
-            min_postsel_prob = 1.
+            min_postsel_prob = 1.0
             for inpt, trgt in zip(inputs, targets):
-                probs, measured_seq, _min_postel_prob = self.forward(inpt, trgt, postselect_measurement)
+                probs, measured_seq, _min_postel_prob = self.forward(
+                    inpt, trgt, postselect_measurement
+                )
                 batch_probs.append(probs)
                 batch_measured_seq.append(measured_seq)
                 min_postsel_prob = min(min_postsel_prob, _min_postel_prob)
 
             # we transpose the batch_probs such that the len dimension comes last
-            return torch.stack(batch_probs).transpose(1, 2), torch.stack(batch_measured_seq), min_postsel_prob
+            return (
+                torch.stack(batch_probs).transpose(1, 2),
+                torch.stack(batch_measured_seq),
+                min_postsel_prob,
+            )
 
         # normal call
         assert (
@@ -158,7 +164,7 @@ class RVQE(nn.Module):
         psi = ket0(self.cell.num_qubits)
         probs = []
         measured_seq = []
-        min_postsel_prob = 1.
+        min_postsel_prob = 1.0
 
         for i, (inpt, trgt) in enumerate(zip_with_offset(inputs, targets)):
             p, psi = self.cell.forward(psi, inpt)

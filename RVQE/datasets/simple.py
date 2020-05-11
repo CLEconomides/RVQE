@@ -50,6 +50,7 @@ class DataSimpleQuotes(DataFactory):
             "the future belongs to those who believe in the beauty of their dreams",  # Eleanor Roosevelt
             "you must be the change you with to see in the world",  # Mahatma Gandhi
             "the most certain way to succeed is always to try just one more time",  # Thomas Edison
+            "wir muessen wissen, wir werden wissen",  # David Hilbert
         ]
         maxlen = max(len(sentence) for sentence in sentences)
         sentences = [sentence.ljust(maxlen) for sentence in sentences]

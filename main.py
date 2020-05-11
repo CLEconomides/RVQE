@@ -25,12 +25,12 @@ import secrets
 
 colorful.use_palette(
     {
-        "background": "#0B2A71",
+        "background": "#005f87",
         "white": "#ffffff",
-        "gold": "#EDC835",
-        "validate": "#7EBE7B",
-        "faint": "#606060",
-        "quantum": "#a090a0",
+        "gold": "#ffaf00",
+        "validate": "#5faf5f",
+        "faint": "#6c6c6c",
+        "quantum": "#af005f",
     }
 )
 

@@ -35,6 +35,12 @@ class DataSimpleSequences(DataFactory):
 
 
 class DataSimpleQuotes(DataFactory):
+    """
+        Larger memoization task; we give advice by postselecting on consonants
+        For the quotes given, we have 149 consonants, and 315 characters to be predicted,
+        so we give roughly 47% advice.
+    """
+
     VALID_CHARACTERS = "abcdefghijklmnopqrstuvwxyz,.?! \n"
     DISPLAY_CHARACTERS = "abcdefghijklmnopqrstuvwxyz,.?! ¶"
     assert len(VALID_CHARACTERS) <= 32, "characters should fit into 5 bits"
@@ -43,12 +49,12 @@ class DataSimpleQuotes(DataFactory):
         super().__init__(*args, **kwargs)
 
         sentences = [
-            "to keep your balance, you must keep moving",  # Albert Einstein
-            "be yourself, everyone else is already taken",  # Oscar Wilde
-            "the future belongs to those who believe in the beauty of their dreams",  # Eleanor Roosevelt
-            "you must be the change you with to see in the world",  # Mahatma Gandhi
-            "the most certain way to succeed is always to try just one more time",  # Thomas Edison
-            "wir muessen wissen, wir werden wissen",  # David Hilbert
+            "to keep your balance, you must keep moving.",  # Albert Einstein
+            "be yourself, everyone else is already taken.",  # Oscar Wilde
+            "the future belongs to those who believe in the beauty of their dreams.",  # Eleanor Roosevelt
+            "you must be the change you with to see in the world.",  # Mahatma Gandhi
+            "the most certain way to succeed is always to try just one more time.",  # Thomas Edison
+            "wir muessen wissen, wir werden wissen.",  # David Hilbert
         ]
         maxlen = max(len(sentence) for sentence in sentences)
         sentences = [sentence.ljust(maxlen) for sentence in sentences]
@@ -70,4 +76,15 @@ class DataSimpleQuotes(DataFactory):
     def to_human(self, target: tensor, offset: int = 0) -> str:
         return " " * offset + "".join(
             [DataSimpleQuotes.DISPLAY_CHARACTERS[bitword_to_int(c)] for c in target]
+        )
+
+    CONSONANTS = "bcdfghjklmnpqrstvwxyz"
+
+    def ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
+        """
+            return True for consonant targets
+        """
+        return (
+            bitword_to_char(target, DataSimpleQuotes.VALID_CHARACTERS)
+            in DataSimpleQuotes.CONSONANTS
         )

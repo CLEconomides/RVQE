@@ -173,7 +173,7 @@ class RVQE(nn.Module):
             # measure output
             if postselect_measurement(i, trgt):
                 measure = trgt
-                min_postsel_prob = min(min_postsel_prob, p[bitword_to_int(measure)])
+                min_postsel_prob = min(min_postsel_prob, float(p[bitword_to_int(measure)]))
             else:
                 output_distribution = torch.distributions.Categorical(probs=p)
                 measure = tensor(

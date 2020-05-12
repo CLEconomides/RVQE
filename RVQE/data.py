@@ -47,6 +47,10 @@ def char_to_bitword(char: str, characters: str, width: int) -> Bitword:
     return [int(c) for c in char_bitword[-width:]]
 
 
+def bitword_to_char(bw: Bitword, characters: str) -> Bitword:
+    return characters[bitword_to_int(bw)]
+
+
 # character error rate
 def character_error_rate(sequence: tensor, target: tensor) -> float:
     """

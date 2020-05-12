@@ -21,17 +21,18 @@ do
         do
             for w in "${workspaces[@]}"
             do
+                TAG="topology-$o-$d-$s-$w"
 
-                LOCKFILE="$LOCKFILEFOLDER/experiment3-$o-$d-$s-$w.lock"
-                DONEFILE="$LOCKFILEFOLDER/experiment3-$o-$d-$s-$w.done"
+                LOCKFILE="$LOCKFILEFOLDER/experiment-$TAG.lock"
+                DONEFILE="$LOCKFILEFOLDER/experiment-$TAG.done"
                 sync
 
                 if [[ ! -f "$DONEFILE" ]] ; then
                     {
                         if flock -n 200 ; then
-                            echo "running $o-$d-$s-$w"
+                            echo "running $TAG"
                             ./main.py \
-                                --tag experiment3-$o-$d-$s-$w \
+                                --tag experiment-$TAG \
                                 --seed 2349711 \
                                 --num-shards 2 \
                                 --epochs 500 \
@@ -50,12 +51,12 @@ do
                                 touch "$DONEFILE"                
                                 sync
                             else
-                                echo "failure running $o-$d-$s-$w."
+                                echo "failure running $TAG."
                             fi
                             sleep 1
 
                         else
-                            echo "skipping $o-$d-$s-$w"
+                            echo "skipping $TAG"
                         fi
                     } 200>"$LOCKFILE"
                 fi

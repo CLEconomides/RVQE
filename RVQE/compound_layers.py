@@ -172,7 +172,8 @@ class FastQuantumNeuronLayer(nn.Module):
 
     @property
     def _sin_cos_op(self) -> Tuple[tensor, tensor]:
-        ten = 0.5 * ((self._ten * self.φ).sum(axis=1) + self.θ - pi / 2)
+        φ = nn.functional.sigmoid(self.φ) - .5
+        ten = 0.5 * ((self._ten * φ).sum(axis=1) + self.θ - pi / 2)
 
         sin_op = ten.sin() ** (2 ** self.order)
         cos_op = ten.cos() ** (2 ** self.order)

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # elman-letter
 
-seeds=( 720 7292 4402 5427 4269 7928 3475 5114 3975 2733 1217 8443 2 2826 9432 6936 5081 3774 7427 700 1664 7262 499 9736 6654 )
+workspaces( 3 4 5 6 7 )
+stages=( 1 2 3 4 )
+seeds=( 6936 5081 3774 7427 700 1664 7262 499 9736 6654 )
 
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
@@ -9,9 +11,14 @@ mkdir -p "$LOCKFILEFOLDER"
 trap "exit" INT
 sleep $[ ($RANDOM % 40) + 1 ]s
 
+
 for sd in "${seeds[@]}"
 do
-    TAG="elman-letter-$sd"
+for ws in "${workspaces[@]}"
+do
+for st in "${stages[@]}"
+do
+    TAG="elman-letter-$sd-$ws-$st"
 
     LOCKFILE="$LOCKFILEFOLDER/experiment-$TAG.lock"
     DONEFILE="$LOCKFILEFOLDER/experiment-$TAG.done"
@@ -28,12 +35,12 @@ do
                     --epochs 1000 \
                     train \
                     --dataset elman-letter \
-                    --workspace 7 \
-                    --stages 2 \
+                    --workspace $ws \
+                    --stages $st \
                     --order 2 \
                     --degree 3 \
                     --optimizer rmsprop \
-                    --learning-rate 0.01 \
+                    --learning-rate 0.002 \
                     --sentence-length 36 \
                     --batch-size 8
                 
@@ -50,4 +57,6 @@ do
             fi
         } 200>"$LOCKFILE"
     fi
+done
+done
 done

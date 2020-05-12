@@ -288,6 +288,8 @@ def train(shard: int, args):
                 )  # the model never predicts the first token
                 loss.backward()
 
+                torch.nn.utils.clip_grad_norm_(rvqe.parameters(), .5)
+
                 return loss
 
             optimizer.step(loss_closure)

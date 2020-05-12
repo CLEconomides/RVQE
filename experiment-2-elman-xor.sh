@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # elman-xor
+# This proves that weight decay does nothing at all.
 
-wds=( 0.1 0.01 0.001 0.0001 0 )
+optims=( rmsprop sgd adam )
 seeds=( 720 7292 4402 5427 4269 7928 3475 5114 3975 2733 )
 
 LOCKFILEFOLDER="./locks"
@@ -12,9 +13,9 @@ sleep $[ ($RANDOM % 40) + 1 ]s
 
 for sd in "${seeds[@]}"
 do
-    for wd in "${wds[@]}"
+    for optim in "${optims[@]}"
     do
-        TAG="elman-xor-$sd-$wd"
+        TAG="elman-xor-$sd-$optim"
 
         LOCKFILE="$LOCKFILEFOLDER/experiment-$TAG.lock"
         DONEFILE="$LOCKFILEFOLDER/experiment-$TAG.done"
@@ -35,9 +36,9 @@ do
                         --stages 3 \
                         --order 2 \
                         --degree 4 \
-                        --optimizer rmsprop \
+                        --optimizer $optim \
                         --learning-rate 0.01 \
-                        --weight-decay $wd \
+                        --weight-decay 0 \
                         --sentence-length 36 \
                         --batch-size 8
                     

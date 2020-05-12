@@ -235,8 +235,7 @@ def train(shard: int, args):
         else:
             for name, p in rvqe.named_parameters():
                 if name[-1:] == "θ":  # rY
-                    pass
-                    # nn.init.normal_(p, mean=0.0, std=0.005)
+                    nn.init.normal_(p, mean=0.0, std=0.005)
                 elif name[-1:] == "φ":  # crY
                     nn.init.normal_(p, mean=0.0, std=0.5)
                 else:

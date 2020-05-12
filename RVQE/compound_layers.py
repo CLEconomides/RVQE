@@ -79,7 +79,8 @@ class QuantumNeuronLayer(CompoundLayer):
         self._param_gates = []
         for idcs in index_sets_without(workspace, [outlane], degree):
             self._param_gates.append(crYLayer(idcs, ancillas[0]))
-        self._param_gates.append(rYLayer(ancillas[0], initial_θ=pi / 4))
+        self._param_gates.append(rYPi4Layer(ancillas[0]))
+        self._param_gates.append(rYLayer(ancillas[0], initial_θ=0.))
 
         # assemble circuit gate layers
         _gates = []
@@ -167,11 +168,11 @@ class FastQuantumNeuronLayer(nn.Module):
         self._ten = subset_index_tensor(len(self.sourcelanes), degree)
 
         self.φ = nn.Parameter(torch.ones(self._ten.shape[1]))  # weights
-        self.θ = nn.Parameter(tensor(pi / 4))  # bias
+        self.θ = nn.Parameter(tensor(0.))  # bias
 
     @property
     def _sin_cos_op(self) -> Tuple[tensor, tensor]:
-        ten = 0.5 * ((self._ten * self.φ).sum(axis=1) + self.θ)
+        ten = 0.5 * ((self._ten * self.φ).sum(axis=1) + self.θ - pi / 2)
 
         sin_op = ten.sin() ** (2 ** self.order)
         cos_op = ten.cos() ** (2 ** self.order)

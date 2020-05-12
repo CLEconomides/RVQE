@@ -5,7 +5,7 @@ import torch
 from torch import nn, tensor
 
 import copy
-from math import sqrt
+import math
 
 import itertools
 
@@ -64,7 +64,17 @@ class HLayer(GateLayer):
     def __init__(self, target_lane: int):
         super().__init__()
         self.lanes = [target_lane]
-        self.U = tensor([[1.0, 1.0], [1.0, -1.0]]) / sqrt(2.0)
+        self.U = tensor([[1.0, 1.0], [1.0, -1.0]]) / math.sqrt(2.0)
+
+
+class rYPi4Layer(GateLayer):
+    def __init__(self, target_lane: int):
+        super().__init__()
+
+        self.lanes = [target_lane]
+        cpi4 = math.cos(math.pi / 4)
+        spi4 = math.sin(math.pi / 4)
+        self.U = tensor([[ cpi4, spi4 ], [ -spi4, cpi4 ]])
 
 
 class rYLayer(GateLayer):

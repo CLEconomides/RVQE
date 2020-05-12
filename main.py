@@ -220,14 +220,14 @@ def train(shard: int, args):
 
         # create optimizer
         if original_args.optimizer == "sgd":
-            optimizer = torch.optim.SGD(rvqe.parameters(), lr=original_args.learning_rate)
+            optimizer = torch.optim.SGD(rvqe.parameters(), lr=original_args.learning_rate, weight_decay=original_args.weight_decay)
         elif original_args.optimizer == "adam":
-            optimizer = torch.optim.AdamW(rvqe.parameters(), lr=original_args.learning_rate)
+            optimizer = torch.optim.AdamW(rvqe.parameters(), lr=original_args.learning_rate, weight_decay=original_args.weight_decay)
         elif original_args.optimizer == "rmsprop":
-            optimizer = torch.optim.RMSprop(rvqe.parameters(), lr=original_args.learning_rate)
+            optimizer = torch.optim.RMSprop(rvqe.parameters(), lr=original_args.learning_rate, weight_decay=original_args.weight_decay)
         elif original_args.optimizer == "lbfgs":
             optimizer = torch.optim.LBFGS(rvqe.parameters(), lr=original_args.learning_rate)
-
+            
         # when in resume mode, load model and optimizer state; otherwise initialize
         if RESUME_MODE:
             rvqe.load_state_dict(store["model_state_dict"])
@@ -574,6 +574,13 @@ if __name__ == "__main__":
         type=float,
         default="0.003",
         help="learning rate for optimizer",
+    )
+    parser_train.add_argument(
+        "--weight-decay",
+        metavar="WD",
+        type=float,
+        default="0.",
+        help="weight decay for optimizer",
     )
 
     parser_resume = subparsers.add_parser(

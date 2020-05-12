@@ -28,10 +28,10 @@ do
                     --epochs 1000 \
                     train \
                     --dataset simple-quotes \
-                    --workspace 7 \
+                    --workspace 6 \
                     --stages 3 \
                     --order 2 \
-                    --degree 4 \
+                    --degree 3 \
                     --optimizer rmsprop \
                     --learning-rate 0.005 \
                     --sentence-length 36 \

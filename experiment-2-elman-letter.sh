@@ -28,10 +28,10 @@ do
                     --epochs 1000 \
                     train \
                     --dataset elman-letter \
-                    --workspace 8 \
+                    --workspace 7 \
                     --stages 2 \
                     --order 2 \
-                    --degree 4 \
+                    --degree 3 \
                     --optimizer rmsprop \
                     --learning-rate 0.01 \
                     --sentence-length 36 \

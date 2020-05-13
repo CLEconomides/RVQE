@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # elman-letter
 
-workspaces( 3 4 5 6 7 )
+workspaces=( 3 4 5 6 7 )
 stages=( 1 2 3 4 )
+degrees=( 1 2 3 4 )
 seeds=( 6936 5081 3774 7427 700 1664 7262 499 9736 6654 )
 
 LOCKFILEFOLDER="./locks"
@@ -18,7 +19,9 @@ for ws in "${workspaces[@]}"
 do
 for st in "${stages[@]}"
 do
-    TAG="elman-letter-$sd-$ws-$st"
+for dg in "${degrees[@]}"
+do
+    TAG="elman-letter-$sd-$ws-$st-$dg"
 
     LOCKFILE="$LOCKFILEFOLDER/experiment-$TAG.lock"
     DONEFILE="$LOCKFILEFOLDER/experiment-$TAG.done"
@@ -38,9 +41,9 @@ do
                     --workspace $ws \
                     --stages $st \
                     --order 2 \
-                    --degree 3 \
-                    --optimizer rmsprop \
-                    --learning-rate 0.002 \
+                    --degree $dg \
+                    --optimizer adam \
+                    --learning-rate 0.005 \
                     --sentence-length 36 \
                     --batch-size 8
                 
@@ -57,6 +60,7 @@ do
             fi
         } 200>"$LOCKFILE"
     fi
+done
 done
 done
 done

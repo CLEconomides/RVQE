@@ -39,9 +39,10 @@ do
                     --seed $sd \
                     --num-shards 2 \
                     --epochs 1000 \
+                    --stop-at-loss 0.0001 \
                     train \
                     --dataset elman-xor \
-                    --workspace 6 \
+                    --workspace 4 \
                     --stages 1 \
                     --order 2 \
                     --degree 3 \

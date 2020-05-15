@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # elman-letter
 
-biases=( 0 .785398 1.5708 4.71239 )
+biases=( 0 .785398 1.5708 3.14159 )
 spreadsBias=( 0 0.01 0.1 1. 10. )
 spreadsWeights=( 0 0.01 0.1 1. 10. )
 spreadsUnitaries=( 0 0.01 0.1 1. 10. )
@@ -39,7 +39,7 @@ do
                     --seed $sd \
                     --num-shards 2 \
                     --epochs 1000 \
-                    --stop-at-loss 0.0001 \
+                    --stop-at-loss 0.001 \
                     train \
                     --dataset elman-xor \
                     --workspace 4 \

@@ -89,7 +89,7 @@ class QuantumNeuronLayer(CompoundLayer):
         self._param_gates = []
         for idcs in index_sets_without(workspace, [outlane], degree):
             self._param_gates.append(crYLayer(idcs, ancillas[0]))
-        self._param_gates.append(rYLayer(ancillas[0], initial_θ=tensor(bias)))
+        self._param_gates.append(rYLayer(ancillas[0], initial_θ=bias))
         self._param_gates.append(rYLayer(ancillas[0], initial_θ=nn.Parameter(tensor(0.0))))
 
         # assemble circuit gate layers

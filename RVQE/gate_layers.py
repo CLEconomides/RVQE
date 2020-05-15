@@ -68,17 +68,16 @@ class HLayer(GateLayer):
 
 
 class rYLayer(GateLayer):
-    def __init__(self, target_lane: int, initial_θ: Union[tensor, nn.Parameter]):
+    def __init__(self, target_lane: int, initial_θ: Union[float, tensor, nn.Parameter]):
         super().__init__()
         assert isinstance(initial_θ, (float, torch.Tensor, nn.Parameter)), "wrong angle type given"
-        if isinstance(initial_θ, float):
-            initial_θ = tensor(initial_θ)
 
         self.lanes = [target_lane]
         self.θ = initial_θ
 
-        if not isinstance(initial_θ, nn.Parameter):
+        if isinstance(self.θ, float):
             # assume this is a constant rotation gate, so create cache value
+            self.θ = tensor(self.θ)
             self._U = self.U
 
     @property

@@ -175,6 +175,13 @@ def dict_to_table(dct) -> str:
     return "\r".join(f"    {k:>25} {v}" for k, v in dct.items())
 
 
+def init_const_or_normal(p: nn.Parameter, mean: float, std: float):
+    if std < 1e-10:
+        nn.init.constant_(p, val=mean)
+    else:
+        nn.init.normal_(p, mean=mean, std=std)
+
+
 def train(shard: int, args):
     with DistributedTrainingEnvironment(shard, args) as environment:
         print, print_all = environment.print_once, environment.print_all
@@ -248,11 +255,11 @@ def train(shard: int, args):
         else:
             for name, p in rvqe.named_parameters():
                 if name[-1:] == "θ":  # quantum neuron bias
-                    nn.init.normal_(p, mean=0.0, std=original_args.initial_bias_spread)
+                    init_const_or_normal(p, mean=0.0, std=original_args.initial_bias_spread)
                 elif name[-1:] == "φ":  # quantum neuron weights
-                    nn.init.normal_(p, mean=0.0, std=original_args.initial_weights_spread)
+                    init_const_or_normal(p, mean=0.0, std=original_args.initial_weights_spread)
                 elif name[-2:] == "θs":  # unitary layer
-                    nn.init.normal_(p, mean=0.0, std=original_args.initial_unitaries_spread)
+                    init_const_or_normal(p, mean=0.0, std=original_args.initial_unitaries_spread)
                 else:
                     raise NotImplementedError(f"{name} unknown parameter name for initialization")
 

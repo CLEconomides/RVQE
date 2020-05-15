@@ -2,6 +2,8 @@ from .quantum import *
 from .data import int_to_bitword
 from .gate_layers import *
 
+import math
+
 
 import itertools
 
@@ -43,8 +45,9 @@ class UnitaryLayer(CompoundLayer):
     def __init__(self, workspace: List[int]):
         super().__init__()
         self.workspace = workspace
+        self.θs = nn.Parameter(torch.zeros(len(workspace)))
         self.gates = nn.Sequential(
-            *[rYLayer(i, initial_θ=0.0) for i in workspace]
+            *[rYLayer(i, initial_θ=θ) for i, θ in zip(workspace, self.θs)]
         )  # we reverse the order so to have the same lane order as in qiskit
 
     def extra_repr(self):
@@ -53,7 +56,13 @@ class UnitaryLayer(CompoundLayer):
 
 class QuantumNeuronLayer(CompoundLayer):
     def __init__(
-        self, workspace: List[int], outlane: int, ancillas: List[int], degree: int = 2, **kwargs
+        self,
+        workspace: List[int],
+        outlane: int,
+        ancillas: List[int],
+        degree: int = 2,
+        bias: float = math.pi / 2,
+        **kwargs,
     ):
         """
             workspace from which to take values, write onto outlane; and use ancillas for intermediate computation
@@ -74,13 +83,14 @@ class QuantumNeuronLayer(CompoundLayer):
         self.outlane = outlane
         self.order = len(ancillas)
         self.degree = degree
+        self.bias = bias
 
         # precompute parametrized gates as they need to share weights
         self._param_gates = []
         for idcs in index_sets_without(workspace, [outlane], degree):
             self._param_gates.append(crYLayer(idcs, ancillas[0]))
-        self._param_gates.append(rYPi4Layer(ancillas[0]))
-        self._param_gates.append(rYLayer(ancillas[0], initial_θ=0.))
+        self._param_gates.append(rYLayer(ancillas[0], initial_θ=tensor(bias)))
+        self._param_gates.append(rYLayer(ancillas[0], initial_θ=nn.Parameter(tensor(0.0))))
 
         # assemble circuit gate layers
         _gates = []
@@ -116,7 +126,7 @@ class QuantumNeuronLayer(CompoundLayer):
         _gates.append(PostselectLayer(ancilla_to_postselect_on, on=0))
 
     def extra_repr(self):
-        return f"workspace={self.workspace}, outlane={self.outlane}, ancillas={self.ancillas} (order={self.order}, degree={self.degree})"
+        return f"workspace={self.workspace}, outlane={self.outlane}, ancillas={self.ancillas} (order={self.order}, degree={self.degree}, bias={self.bias})"
 
 
 def bitword_tensor(width: int) -> tensor:
@@ -128,6 +138,10 @@ def bitword_tensor(width: int) -> tensor:
     )
 
 
+import functools
+
+
+@functools.lru_cache(maxsize=10)
 def subset_index_tensor(width: int, degree: int) -> tensor:
     """
         returns a tensor in which every row is a list of boolean flags that indicate
@@ -145,7 +159,15 @@ class FastQuantumNeuronLayer(nn.Module):
         Mimics the action of a QuantumNeuronLayer, but with a direct implementation
     """
 
-    def __init__(self, workspace: List[int], outlane: int, order: int, degree: int = 2, **kwargs):
+    def __init__(
+        self,
+        workspace: List[int],
+        outlane: int,
+        order: int,
+        degree: int = 2,
+        bias: float = math.pi / 2,
+        **kwargs,
+    ):
         """
             workspace from which to take values, write onto outlane;
             instead of ancilla list we give the order explicitly
@@ -161,6 +183,7 @@ class FastQuantumNeuronLayer(nn.Module):
         self.outlane = outlane
         self.order = order
         self.degree = degree
+        self.bias = bias
 
         self.sourcelanes = [w for w in workspace if w != outlane]
 
@@ -168,11 +191,11 @@ class FastQuantumNeuronLayer(nn.Module):
         self._ten = subset_index_tensor(len(self.sourcelanes), degree)
 
         self.φ = nn.Parameter(torch.ones(self._ten.shape[1]))  # weights
-        self.θ = nn.Parameter(tensor(0.))  # bias
+        self.θ = nn.Parameter(tensor(0.0))  # bias
 
     @property
     def _sin_cos_op(self) -> Tuple[tensor, tensor]:
-        ten = 0.5 * ((self._ten * self.φ).sum(axis=1) + self.θ - pi / 2)
+        ten = 0.5 * ((self._ten * self.φ).sum(axis=1) + self.θ + self.bias)
 
         sin_op = ten.sin() ** (2 ** self.order)
         cos_op = ten.cos() ** (2 ** self.order)
@@ -203,4 +226,4 @@ class FastQuantumNeuronLayer(nn.Module):
         return 0
 
     def extra_repr(self):
-        return f"workspace={self.workspace}, outlane={self.outlane}, ancillas={self.ancillas} (order={self.order}, degree={self.degree})"
+        return f"workspace={self.workspace}, outlane={self.outlane}, ancillas={self.ancillas} (order={self.order}, degree={self.degree}, bias={self.bias})"

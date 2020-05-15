@@ -215,29 +215,44 @@ def train(shard: int, args):
                 stages=original_args.stages,
                 order=original_args.order,
                 degree=original_args.degree,
+                bias=original_args.initial_bias,
             )
         )
 
         # create optimizer
         if original_args.optimizer == "sgd":
-            optimizer = torch.optim.SGD(rvqe.parameters(), lr=original_args.learning_rate, weight_decay=original_args.weight_decay)
+            optimizer = torch.optim.SGD(
+                rvqe.parameters(),
+                lr=original_args.learning_rate,
+                weight_decay=original_args.weight_decay,
+            )
         elif original_args.optimizer == "adam":
-            optimizer = torch.optim.AdamW(rvqe.parameters(), lr=original_args.learning_rate, weight_decay=original_args.weight_decay)
+            optimizer = torch.optim.AdamW(
+                rvqe.parameters(),
+                lr=original_args.learning_rate,
+                weight_decay=original_args.weight_decay,
+            )
         elif original_args.optimizer == "rmsprop":
-            optimizer = torch.optim.RMSprop(rvqe.parameters(), lr=original_args.learning_rate, weight_decay=original_args.weight_decay)
+            optimizer = torch.optim.RMSprop(
+                rvqe.parameters(),
+                lr=original_args.learning_rate,
+                weight_decay=original_args.weight_decay,
+            )
         elif original_args.optimizer == "lbfgs":
             optimizer = torch.optim.LBFGS(rvqe.parameters(), lr=original_args.learning_rate)
-            
+
         # when in resume mode, load model and optimizer state; otherwise initialize
         if RESUME_MODE:
             rvqe.load_state_dict(store["model_state_dict"])
             optimizer.load_state_dict(store["optimizer_state_dict"])
         else:
             for name, p in rvqe.named_parameters():
-                if name[-1:] == "θ":  # rY
-                    nn.init.normal_(p, mean=0.0, std=0.005)
-                elif name[-1:] == "φ":  # crY
-                    nn.init.normal_(p, mean=0.0, std=0.5)
+                if name[-1:] == "θ":  # quantum neuron bias
+                    nn.init.normal_(p, mean=0.0, std=original_args.initial_bias_spread)
+                elif name[-1:] == "φ":  # quantum neuron weights
+                    nn.init.normal_(p, mean=0.0, std=original_args.initial_weights_spread)
+                elif name[-2:] == "θs":  # unitary layer
+                    nn.init.normal_(p, mean=0.0, std=original_args.initial_unitaries_spread)
                 else:
                     raise NotImplementedError(f"{name} unknown parameter name for initialization")
 
@@ -288,7 +303,7 @@ def train(shard: int, args):
                 )  # the model never predicts the first token
                 loss.backward()
 
-                torch.nn.utils.clip_grad_norm_(rvqe.parameters(), .5)
+                torch.nn.utils.clip_grad_norm_(rvqe.parameters(), 0.5)
 
                 return loss
 
@@ -578,11 +593,35 @@ if __name__ == "__main__":
         help="learning rate for optimizer",
     )
     parser_train.add_argument(
-        "--weight-decay",
-        metavar="WD",
+        "--weight-decay", metavar="WD", type=float, default=0.0, help="weight decay for optimizer",
+    )
+    parser_train.add_argument(
+        "--initial-bias",
+        metavar="IB",
         type=float,
-        default="0.",
-        help="weight decay for optimizer",
+        default=1.57,
+        help="initial bias for quantum neuron",
+    )
+    parser_train.add_argument(
+        "--initial-bias-spread",
+        metavar="IBσ ",
+        type=float,
+        default=0.001,
+        help="initial bias spread for quantum neuron",
+    )
+    parser_train.add_argument(
+        "--initial-weights-spread",
+        metavar="IWσ",
+        type=float,
+        default=0.1,
+        help="initial weights spread for quantum neuron",
+    )
+    parser_train.add_argument(
+        "--initial-unitaries-spread",
+        metavar="IUσ",
+        type=float,
+        default=0.001,
+        help="initial spread for unitary layers",
     )
 
     parser_resume = subparsers.add_parser(

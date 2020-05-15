@@ -67,25 +67,25 @@ class HLayer(GateLayer):
         self.U = tensor([[1.0, 1.0], [1.0, -1.0]]) / math.sqrt(2.0)
 
 
-class rYPi4Layer(GateLayer):
-    def __init__(self, target_lane: int):
-        super().__init__()
-
-        self.lanes = [target_lane]
-        cpi4 = math.cos(math.pi / 4)
-        spi4 = math.sin(math.pi / 4)
-        self.U = tensor([[ cpi4, spi4 ], [ -spi4, cpi4 ]])
-
-
 class rYLayer(GateLayer):
-    def __init__(self, target_lane: int, initial_θ: float = 1.0):
+    def __init__(self, target_lane: int, initial_θ: Union[tensor, nn.Parameter]):
         super().__init__()
+        assert isinstance(initial_θ, (float, torch.Tensor, nn.Parameter)), "wrong angle type given"
+        if isinstance(initial_θ, float):
+            initial_θ = tensor(initial_θ)
 
         self.lanes = [target_lane]
-        self.θ = nn.Parameter(tensor(initial_θ))
+        self.θ = initial_θ
+
+        if not isinstance(initial_θ, nn.Parameter):
+            # assume this is a constant rotation gate, so create cache value
+            self._U = self.U
 
     @property
     def U(self) -> tensor:
+        if hasattr(self, "_U"):
+            return self._U
+
         # note: these matrices are TRANSPOSED! in this notation
         θ = self.θ
         return torch.stack(

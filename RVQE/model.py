@@ -13,6 +13,8 @@ from .data import zip_with_offset, int_to_bitword, bitword_to_int, Bitword
 import torch
 from torch import nn
 
+import math
+
 
 def count_parameters(model: nn.Module):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -27,6 +29,7 @@ class RVQECell(nn.Module):
         stages: int,
         order: int = 2,
         degree: int = 2,
+        bias: float = math.pi / 2,
         fast: bool = True,
     ):
         """
@@ -42,6 +45,7 @@ class RVQECell(nn.Module):
         self.stages = stages
         self.order = order
         self.degree = degree
+        self.bias = bias
 
         QNL_T = FastQuantumNeuronLayer if fast else QuantumNeuronLayer
         ancilla_count = QNL_T.ancillas_for_order(order)
@@ -60,6 +64,7 @@ class RVQECell(nn.Module):
                     order=order,
                     ancillas=self.ancillas,
                     degree=degree,
+                    bias=bias,
                 )
                 for out in self.workspace
             ]
@@ -74,6 +79,8 @@ class RVQECell(nn.Module):
                             outlane=out,
                             order=order,
                             ancillas=self.ancillas,
+                            degree=degree,
+                            bias=bias,
                         )
                         for out in self.workspace
                     ],
@@ -88,6 +95,8 @@ class RVQECell(nn.Module):
                     outlane=out,
                     order=order,
                     ancillas=self.ancillas,
+                    degree=degree,
+                    bias=bias,
                 )
                 for out in self.inout
             ]

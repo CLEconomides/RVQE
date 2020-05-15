@@ -64,8 +64,8 @@ def test_gates():
         ),
     )
     assert approx_equal(
-        apply(rYLayer(0).U, ket0(3), [0], verbose=True),
-        apply(rYLayer(2).U, ket0(3), [2], verbose=True).transpose(0, 2),
+        apply(rYLayer(0, initial_θ=0.33).U, ket0(3), [0], verbose=True),
+        apply(rYLayer(2, initial_θ=0.33).U, ket0(3), [2], verbose=True).transpose(0, 2),
     )
     assert equal(
         crYLayer(0, 1).forward(ket("00")), ket("00")
@@ -99,12 +99,14 @@ def test_gates():
 
 
 def test_parameter_sharing():
-    foo = rYLayer(2)
+    param1 = nn.Parameter(torch.tensor(0.1))
+    param2 = nn.Parameter(torch.tensor(0.2))
+    foo = rYLayer(2, initial_θ=param1)
     assert (
         len(list(nn.Sequential(foo, foo.T).named_parameters())) == 1
     ), "we expect there to be only one parameter"
     assert (
-        len(list(nn.Sequential(foo, rYLayer(2)).named_parameters())) == 2
+        len(list(nn.Sequential(foo, rYLayer(2, initial_θ=param2)).named_parameters())) == 2
     ), "there have to be two separate parameters here"
 
 

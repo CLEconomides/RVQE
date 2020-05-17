@@ -28,9 +28,10 @@ do
 
     LOCKFILE="$LOCKFILEFOLDER/experiment-$TAG.lock"
     DONEFILE="$LOCKFILEFOLDER/experiment-$TAG.done"
+    FAILFILE="$LOCKFILEFOLDER/experiment-$TAG.fail"
     sync
 
-    if [[ ! -f "$DONEFILE" ]] ; then
+    if [[ ! -f "$DONEFILE" || ! -f "$FAILFILE" || ! -f "$LOCKFILE" ]] ; then
         {
             if flock -n 200 ; then
                 echo "running $TAG"
@@ -55,8 +56,14 @@ do
                     --initial-weights-spread $spreadWeight \
                     --initial-unitaries-spread $spreadUnitary
                 
-                touch "$DONEFILE"                
-                sync
+                if  [[ $? -eq 0 ]] ; then
+                    touch "$DONEFILE"                
+                    sync
+                else
+                    touch "$FAILFILE"            
+                    sync      
+                    echo "failure running $TAG."
+                fi
                 sleep 1
 
             else

@@ -55,12 +55,8 @@ do
                     --initial-weights-spread $spreadWeight \
                     --initial-unitaries-spread $spreadUnitary
                 
-                if  [[ $? -eq 0 ]] ; then
-                    touch "$DONEFILE"                
-                    sync
-                else
-                    echo "failure running $TAG."
-                fi
+                touch "$DONEFILE"                
+                sync
                 sleep 1
 
             else

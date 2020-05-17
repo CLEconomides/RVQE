@@ -31,46 +31,52 @@ do
     FAILFILE="$LOCKFILEFOLDER/experiment-$TAG.fail"
     sync
 
-    if [[ ! -f "$DONEFILE" || ! -f "$FAILFILE" || ! -f "$LOCKFILE" ]] ; then
-        {
-            if flock -n 200 ; then
-                echo "running $TAG"
-                ./main.py \
-                    --tag experiment-$TAG \
-                    --seed $sd \
-                    --num-shards 2 \
-                    --epochs 1000 \
-                    --stop-at-loss 0.001 \
-                    train \
-                    --dataset elman-xor \
-                    --workspace 4 \
-                    --stages 1 \
-                    --order 2 \
-                    --degree 3 \
-                    --optimizer adam \
-                    --learning-rate 0.005 \
-                    --sentence-length 36 \
-                    --batch-size 8 \
-                    --initial-bias $bias \
-                    --initial-bias-spread $spreadBias \
-                    --initial-weights-spread $spreadWeight \
-                    --initial-unitaries-spread $spreadUnitary
-                
-                if  [[ $? -eq 0 ]] ; then
-                    touch "$DONEFILE"                
-                    sync
-                else
-                    touch "$FAILFILE"            
-                    sync      
-                    echo "failure running $TAG."
-                fi
-                sleep 1
-
-            else
-                echo "skipping $TAG"
-            fi
-        } 200>"$LOCKFILE"
+    # check if any lockfiles present
+    if [[ -f "$DONEFILE" || -f "$FAILFILE" || -f "$LOCKFILE" ]] ; then
+        echo "skipping $TAG"
+        break
     fi
+
+    # try to aquire lockfile
+    exec 200>"$LOCKFILE"
+    flock -n 200 || {
+        echo "skipping $TAG"
+        break
+    }
+    
+    # run test
+    echo "running $TAG"
+    ./main.py \
+        --tag experiment-$TAG \
+        --seed $sd \
+        --num-shards 2 \
+        --epochs 1000 \
+        --stop-at-loss 0.001 \
+        train \
+        --dataset elman-xor \
+        --workspace 4 \
+        --stages 1 \
+        --order 2 \
+        --degree 3 \
+        --optimizer adam \
+        --learning-rate 0.005 \
+        --sentence-length 36 \
+        --batch-size 8 \
+        --initial-bias $bias \
+        --initial-bias-spread $spreadBias \
+        --initial-weights-spread $spreadWeight \
+        --initial-unitaries-spread $spreadUnitary
+    
+    if  [[ $? -eq 0 ]] ; then
+        touch "$DONEFILE"                
+        sync
+    else
+        touch "$FAILFILE"            
+        sync      
+        echo "failure running $TAG."
+    fi
+    sleep 1
+
 done
 done
 done

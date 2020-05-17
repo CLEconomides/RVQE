@@ -29,9 +29,9 @@ do
     LOCKFILE="$LOCKFILEFOLDER/experiment-$TAG.lock"
     DONEFILE="$LOCKFILEFOLDER/experiment-$TAG.done"
     FAILFILE="$LOCKFILEFOLDER/experiment-$TAG.fail"
-    sync
 
     # check if any lockfiles present
+    sync
     if [[ -f "$DONEFILE" || -f "$FAILFILE" || -f "$LOCKFILE" ]] ; then
         echo "skipping $TAG"
         break
@@ -68,14 +68,17 @@ do
         --initial-unitaries-spread $spreadUnitary
     
     if  [[ $? -eq 0 ]] ; then
-        touch "$DONEFILE"                
-        sync
+        touch "$DONEFILE"    
     else
-        touch "$FAILFILE"            
-        sync      
+        touch "$FAILFILE"    
         echo "failure running $TAG."
-    fi
-    sleep 1
+    fi 
+
+    sync   
+    sleep 10
+    rm "$LOCKFILE"
+    sync   
+    sleep 10
 
 done
 done

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # elman-letter
 
-biases=( 0 .785398 1.5708 3.14159 )
+biases=( 1.5708 )
 spreadsBias=( 0 0.01 0.1 1. 10. )
 spreadsWeights=( 0 0.01 0.1 1. 10. )
 spreadsUnitaries=( 0 0.01 0.1 1. 10. )

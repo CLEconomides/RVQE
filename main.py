@@ -606,28 +606,28 @@ if __name__ == "__main__":
         "--initial-bias",
         metavar="IB",
         type=float,
-        default=1.57,
+        default=1.570796,
         help="initial bias for quantum neuron",
     )
     parser_train.add_argument(
         "--initial-bias-spread",
         metavar="IBσ ",
         type=float,
-        default=0.001,
+        default=0.1,
         help="initial bias spread for quantum neuron",
     )
     parser_train.add_argument(
         "--initial-weights-spread",
         metavar="IWσ",
         type=float,
-        default=0.1,
+        default=0.,
         help="initial weights spread for quantum neuron",
     )
     parser_train.add_argument(
         "--initial-unitaries-spread",
         metavar="IUσ",
         type=float,
-        default=0.001,
+        default=0.01,
         help="initial spread for unitary layers",
     )
 

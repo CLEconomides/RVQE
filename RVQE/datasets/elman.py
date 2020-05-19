@@ -124,18 +124,18 @@ class DataElmanLetter(DataFactory):
     LETTER_LUT = {"b": "ba", "d": "dii", "g": "guuu"}
 
     BITWORD_LUT = {
-        "b": [1, 0, 1, 0, 0, 1],
-        "d": [1, 0, 1, 1, 0, 1],
-        "g": [1, 0, 1, 0, 1, 1],
-        "a": [0, 1, 0, 0, 1, 1],
-        "i": [0, 1, 0, 1, 0, 1],
-        "u": [0, 1, 0, 1, 1, 1],
+        "b": [1, 0, 0], #[1, 0, 1, 0, 0, 1],
+        "d": [1, 0, 1], #[1, 0, 1, 1, 0, 1],
+        "g": [1, 1, 0], #[1, 0, 1, 0, 1, 1],
+        "a": [0, 0, 0], #[0, 1, 0, 0, 1, 1],
+        "i": [0, 0, 1], #[0, 1, 0, 1, 0, 1],
+        "u": [0, 1, 0], #[0, 1, 0, 1, 1, 1],
     }
 
     TARGET_LUT = {
-        "b": [0] * 6,  # marker for arbitrary consonant
-        "d": [0] * 6,
-        "g": [0] * 6,
+        "b": [1] * 3,  # marker for arbitrary consonant
+        "d": [1] * 3,
+        "g": [1] * 3,
         "a": BITWORD_LUT["a"],
         "i": BITWORD_LUT["i"],
         "u": BITWORD_LUT["u"],
@@ -153,7 +153,7 @@ class DataElmanLetter(DataFactory):
 
     @property
     def input_width(self) -> tensor:
-        return 6
+        return 3
 
     def next_batch(self) -> Batch:
         sentences = []
@@ -177,13 +177,13 @@ class DataElmanLetter(DataFactory):
         return self._sentences_to_batch(sentences, targets)
 
     INVERSE_TARGET_LUT = {
-        41: " b",
-        45: " d",
-        43: " g",
-        19: "a",
-        21: "i",
-        23: "u",
-        0: " ·",  # extra marker for target when we expect a consonant
+        4: " b",
+        5: " d",
+        6: " g",
+        0: "a",
+        1: "i",
+        2: "u",
+        7: " ·",  # extra marker for target when we expect a consonant
     }
 
     def to_human(self, target: tensor, offset: int = 0) -> str:
@@ -197,10 +197,10 @@ class DataElmanLetter(DataFactory):
         )
 
         # if we start with a consonant, trim one space off
-        return out if target[0] not in [41, 45, 43, 0] else out[1:]
+        return out if target[0] not in [4, 5, 6, 7] else out[1:]
 
     def ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
         """
             return True for consonant targets
         """
-        return bitword_to_int(target) in [41, 45, 43]
+        return bitword_to_int(target) in [4, 5, 6]

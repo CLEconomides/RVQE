@@ -458,10 +458,7 @@ def train(shard: int, args):
             },
         )
         print(f"🆗  DONE. Written final checkpoint to {checkpoint}")
-
-        import sys
-
-        sys.exit(0)
+        
 
 
 def command_train(args):

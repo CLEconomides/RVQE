@@ -212,7 +212,7 @@ def train(shard: int, args):
         elif original_args.dataset == "elman-letter":
             dataset = datasets.DataElmanLetter(shard, **vars(original_args))
         elif original_args.dataset == "shakespeare":
-            dataset = datasets.DataShakespeare(**vars(original_args))
+            dataset = datasets.DataShakespeare(shard, **vars(original_args))
 
         # create model and distribute
         rvqe = DistributedDataParallel(
@@ -458,7 +458,7 @@ def train(shard: int, args):
             },
         )
         print(f"🆗  DONE. Written final checkpoint to {checkpoint}")
-        
+
 
 
 def command_train(args):

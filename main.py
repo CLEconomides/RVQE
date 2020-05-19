@@ -287,7 +287,7 @@ def train(shard: int, args):
         for epoch in range(epoch_start, args.epochs):
             # check if we should timeout
             if environment.is_timeout:
-                print(f"❎  Timeout hit after {original_args.timeout}s.")
+                print(f"❎  Timeout hit after {args.timeout}s.")
                 break
 
             time_start = timer()

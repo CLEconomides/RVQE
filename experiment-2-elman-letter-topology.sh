@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # elman-letter
 
-workspaces=( 3 4 5 6 7 8 9 )
-stages=( 1 2 3 4 )
+workspaces=( 3 4 5 6 7 8 )
+stages=( 1 2 )
 degrees=( 1 2 3 4 )
 seeds=( 6936 5081 3774 7427 700 1664 7262 499 9736 6654 )
 
@@ -48,7 +48,7 @@ do
         --seed $sd \
         --num-shards 2 \
         --epochs 1000 \
-        --stop-at-loss 0.001 \
+        --stop-at-loss 0.01 \
         train \
         --dataset elman-letter \
         --workspace $ws \
@@ -58,7 +58,7 @@ do
         --optimizer adam \
         --learning-rate 0.005 \
         --sentence-length 36 \
-        --batch-size 8
+        --batch-size 4
     
     if  [[ $? -eq 0 ]] ; then
         touch "$DONEFILE"    

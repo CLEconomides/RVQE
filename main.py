@@ -12,7 +12,7 @@ from timeit import default_timer as timer
 
 from RVQE.model import RVQE, count_parameters
 from RVQE.quantum import tensor
-from RVQE import datasets, data
+from RVQE import data, datasets
 
 import math, re
 
@@ -203,16 +203,8 @@ def train(shard: int, args):
 
         environment.logger.add_text("args", dict_to_table(vars(args)), epoch_start)
 
-        if original_args.dataset == "simple-seq":
-            dataset = datasets.DataSimpleSequences(shard, **vars(original_args))
-        if original_args.dataset == "simple-quotes":
-            dataset = datasets.DataSimpleQuotes(shard, **vars(original_args))
-        elif original_args.dataset == "elman-xor":
-            dataset = datasets.DataElmanXOR(shard, **vars(original_args))
-        elif original_args.dataset == "elman-letter":
-            dataset = datasets.DataElmanLetter(shard, **vars(original_args))
-        elif original_args.dataset == "shakespeare":
-            dataset = datasets.DataShakespeare(shard, **vars(original_args))
+        # dataset
+        dataset = datasets.all_datasets[original_args.dataset](shard, **vars(original_args))
 
         # create model and distribute
         rvqe = DistributedDataParallel(
@@ -463,14 +455,7 @@ def train(shard: int, args):
 
 def command_train(args):
     # validate
-    datasets = {
-        "simple-seq",
-        "simple-quotes",
-        "elman-xor",
-        "elman-letter",
-        "shakespeare",
-    }
-    assert args.dataset in datasets, "invalid dataset"
+    assert args.dataset in datasets.all_datasets, "invalid dataset"
     assert args.optimizer in {"sgd", "adam", "rmsprop", "lbfgs"}, "invalid optimizer"
 
     if args.dataset == "simple-seq":
@@ -570,7 +555,7 @@ if __name__ == "__main__":
         metavar="D",
         type=str,
         default="simple-seq",
-        help="dataset; choose between simple-seq, simple-quotes, elman-xor, elman-letter and shakespeare",
+        help=f"dataset; choose between {', '.join(datasets.all_datasets.keys())}",
     )
     parser_train.add_argument(
         "--sentence-length",

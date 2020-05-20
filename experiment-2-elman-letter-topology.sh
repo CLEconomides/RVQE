@@ -2,7 +2,7 @@
 # elman-letter
 
 workspaces=( 3 4 5 6 7 8 )
-stages=( 1 2 )
+stages=( 1 2 3 4 )
 degrees=( 1 2 3 4 )
 seeds=( 6936 5081 3774 7427 700 1664 7262 499 9736 6654 )
 

@@ -16,10 +16,11 @@ class DataMNIST01(DataFactory):
                 pd.read_csv(
                     path.join(path.dirname(path.abspath(__file__)), f"mnist-simple-{key}.csv")
                 ).values
-            ).unsqueeze(2).tolist()
-             for key in [ "0-train", "1-train", "0-test", "1-test" ]
+            )
+            .unsqueeze(2)
+            .tolist()
+            for key in ["0-train", "1-train", "0-test", "1-test"]
         }
-
 
     def __init__(self, shard: int, **kwargs):
         super().__init__(shard, **kwargs)
@@ -41,33 +42,37 @@ class DataMNIST01(DataFactory):
     # last pixel has to contain the label
     TARGET0 = torch.cat((torch.zeros(99), torch.zeros(1))).unsqueeze(1).int().tolist()
     TARGET1 = torch.cat((torch.zeros(99), torch.ones(1))).unsqueeze(1).int().tolist()
-    
+
     def next_batch(self) -> Batch:
         # extract random batch of sentences
-        # we try to keep it balanced between 0 and 1
         sentences = []
         targets = []
+
+        # we try to keep it balanced between 0 and 1, even if batch size is 1, and multiple shards are used
+        dataA = self._data["0-train"]
+        dataB = self._data["1-train"]
+        targetA = DataMNIST01.TARGET0
+        targetB = DataMNIST01.TARGET1
+        if self.shard % 2 == 1:
+            dataA, dataB = dataB, dataA
+            targetA, targetB = targetB, targetA
+
         while len(sentences) < self.batch_size // 2:
-            idx = torch.randint(
-                0, len(self._data["0-train"]), (1,), generator=self.rng
-            ).item()
-            sentences.append(self._data["0-train"][idx])
-            targets.append(DataMNIST01.TARGET0)
+            idx = torch.randint(0, len(dataA), (1,), generator=self.rng).item()
+            sentences.append(dataA[idx])
+            targets.append(targetA)
 
         while len(sentences) < self.batch_size:
-            idx = torch.randint(
-                0, len(self._data["1-train"]), (1,), generator=self.rng
-            ).item()
-            sentences.append(self._data["1-train"][idx])
-            targets.append(DataMNIST01.TARGET1)
+            idx = torch.randint(0, len(dataB), (1,), generator=self.rng).item()
+            sentences.append(dataB[idx])
+            targets.append(targetB)
 
         # turn into batch
         return self._sentences_to_batch(sentences, targets)
 
     def to_human(self, target: tensor, offset: int = 0) -> str:
-        out = " " * offset + "".join( str(int(d)) for d in target[:-2] )
+        out = " " * offset + "".join(str(int(d)) for d in target[:-2])
         return out + "  " + colorful.bold(str(int(target[-1])))
-
 
     def filter(self, sequence: tensor, dim: int) -> tensor:
         """

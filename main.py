@@ -452,7 +452,6 @@ def train(shard: int, args):
         print(f"🆗  DONE. Written final checkpoint to {checkpoint}")
 
 
-
 def command_train(args):
     # validate
     assert args.dataset in datasets.all_datasets, "invalid dataset"
@@ -602,7 +601,7 @@ if __name__ == "__main__":
         "--initial-weights-spread",
         metavar="IWσ",
         type=float,
-        default=0.,
+        default=0.0,
         help="initial weights spread for quantum neuron",
     )
     parser_train.add_argument(

@@ -31,14 +31,14 @@ do
     sync
     if [[ -f "$DONEFILE" || -f "$FAILFILE" || -f "$LOCKFILE" ]] ; then
         echo "skipping $TAG"
-        break
+        continue
     fi
 
     # try to aquire lockfile
     exec 200>"$LOCKFILE"
     flock -n 200 || {
         echo "skipping $TAG"
-        break
+        continue
     }
     
     # run test

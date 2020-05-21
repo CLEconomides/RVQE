@@ -10,8 +10,8 @@ trap "exit" INT
 sleep $[ ($RANDOM % 40) + 1 ]s
 
 
-for sd in "${seeds[@]}"
-do
+for sd in "${seeds[@]}"; do
+
     TAG="mnist01-$sd"
 
     LOCKFILE="$LOCKFILEFOLDER/experiment-$TAG.lock"
@@ -22,14 +22,14 @@ do
     sync
     if [[ -f "$DONEFILE" || -f "$FAILFILE" || -f "$LOCKFILE" ]] ; then
         echo "skipping $TAG"
-        break
+        continue
     fi
 
     # try to aquire lockfile
     exec 200>"$LOCKFILE"
     flock -n 200 || {
         echo "skipping $TAG"
-        break
+        continue
     }
     
     # run test
@@ -62,7 +62,4 @@ do
     sync   
     sleep 10
     
-done
-done
-done
 done

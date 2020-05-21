@@ -11,14 +11,19 @@ class DataMNIST01(DataFactory):
         import os.path as path
         import pandas as pd
 
+        lut = {0: [0, 0], 1: [0, 1], 2: [1, 0], 3: [1, 1]}
+
+        # import
         DataMNIST01._data = {
-            key: tensor(
-                pd.read_csv(
-                    path.join(path.dirname(path.abspath(__file__)), f"mnist-simple-{key}.csv")
-                ).values
-            )
-            .unsqueeze(2)
-            .tolist()
+            key: [
+                [lut[val.item()] for val in row]
+                for row in tensor(
+                    pd.read_csv(
+                        path.join(path.dirname(path.abspath(__file__)), f"mnist-simple-{key}.csv"),
+                        header=None,
+                    ).values
+                )
+            ]
             for key in ["0-train", "1-train", "0-test", "1-test"]
         }
 
@@ -37,11 +42,11 @@ class DataMNIST01(DataFactory):
 
     @property
     def input_width(self) -> tensor:
-        return 1
+        return 2
 
     # last pixel has to contain the label
-    TARGET0 = torch.cat((torch.zeros(99), torch.zeros(1))).unsqueeze(1).int().tolist()
-    TARGET1 = torch.cat((torch.zeros(99), torch.ones(1))).unsqueeze(1).int().tolist()
+    TARGET0 = torch.cat((torch.zeros(99, 2), torch.tensor([[0., 0]]))).int().tolist()
+    TARGET1 = torch.cat((torch.zeros(99, 2), torch.tensor([[0., 1]]))).int().tolist()
 
     def next_batch(self) -> Batch:
         # extract random batch of sentences
@@ -71,8 +76,9 @@ class DataMNIST01(DataFactory):
         return self._sentences_to_batch(sentences, targets)
 
     def to_human(self, target: tensor, offset: int = 0) -> str:
-        out = " " * offset + "".join(str(int(d)) for d in target[:-2])
-        return out + "  " + colorful.bold(str(int(target[-1])))
+        STR_REP = " ▃▀█"
+        out = " " * offset + "".join(bitword_to_char(d, STR_REP) for d in target[:-2])
+        return out + "  " + colorful.bold(bitword_to_str(target[-1]))
 
     def filter(self, sequence: tensor, dim: int) -> tensor:
         """

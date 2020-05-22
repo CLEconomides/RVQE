@@ -127,7 +127,7 @@ class DistributedTrainingEnvironment:
 
     CHECKPOINT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "checkpoints/")
 
-    def save_checkpoint(self, model, optimizer, extra_tag: str = "", **kwargs) -> Optional[str]:
+    def save_checkpoint(self, model, optimizer, scheduler, extra_tag: str = "", **kwargs) -> Optional[str]:
         if self.shard != 0:
             return None
 
@@ -135,6 +135,7 @@ class DistributedTrainingEnvironment:
             {
                 "model_state_dict": model.state_dict(),
                 "optimizer_state_dict": optimizer.state_dict(),
+                "scheduler": scheduler.state_dict(),
                 "_original_args": self._original_args,
                 "_checkpoint_prefix": self._checkpoint_prefix,
                 "_torch_rng_state": torch.get_rng_state(),
@@ -240,10 +241,14 @@ def train(shard: int, args):
         elif original_args.optimizer == "lbfgs":
             optimizer = torch.optim.LBFGS(rvqe.parameters(), lr=original_args.learning_rate)
 
+        # scheduler
+        scheduler = torch.optim.ReduceLROnPlateau(optimiser, factor=0.5, patience=original_args.learning_patience if original_args.learning_patience is not None else 10**10)
+
         # when in resume mode, load model and optimizer state; otherwise initialize
         if RESUME_MODE:
             rvqe.load_state_dict(store["model_state_dict"])
             optimizer.load_state_dict(store["optimizer_state_dict"])
+            scheduler.load_state_dict(store["scheduler"])
         else:
             for name, p in rvqe.named_parameters():
                 if name[-1:] == "θ":  # quantum neuron bias
@@ -585,6 +590,13 @@ if __name__ == "__main__":
     )
     parser_train.add_argument(
         "--weight-decay", metavar="WD", type=float, default=0.0, help="weight decay for optimizer",
+    )
+    parser_train.add_argument(
+        "--learning-patience",
+        metavar="LP",
+        type=int,
+        default=None,
+        help="setting to a positive value will add a scheduler that decreaces the learning rate by a factor of .5 after LP steps"
     )
     parser_train.add_argument(
         "--initial-bias",

@@ -40,7 +40,7 @@ for sd in "${seeds[@]}"; do
         --num-shards 3 \
         --epochs 5000 \
         train \
-        --dataset mnist01 \
+        --dataset mnist01-gen \
         --workspace 8 \
         --stages 2 \
         --order 2 \

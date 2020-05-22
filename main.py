@@ -350,8 +350,11 @@ def train(shard: int, args):
                             len(measured_sequences) == args.num_shards * args.batch_size
                         ), "gather failed somehow"
 
+                        # display and log a random subset of strings to show
                         logtext = ""
-                        for i in range(min(args.num_validation_samples, args.num_shards)):
+                        for i in torch.randperm(len(sentences))[
+                            : min(args.num_validation_samples, args.num_shards)
+                        ]:
                             if (targets[i] != sentences[i]).any():
                                 text = f"inpt = { dataset.to_human(sentences[i]) }"
                                 print(colorful.faint(text))

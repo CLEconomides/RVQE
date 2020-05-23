@@ -44,10 +44,10 @@ for sd in "${seeds[@]}"; do
         --workspace 8 \
         --stages 2 \
         --order 2 \
-        --degree 3 \
+        --degree 2 \
         --optimizer adam \
         --learning-rate 0.005 \
-        --batch-size 50
+        --batch-size 20
     
     if  [[ $? -eq 0 ]] ; then
         touch "$DONEFILE"    

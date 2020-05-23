@@ -239,7 +239,7 @@ class DataMNIST(DataMNISTBase):
         if offset == 0 and not target.tolist() in DataMNIST.TARGETS:
             return super().to_human(target)
         else:
-            return colorful.bold(str(DataMNIST.LABELS.index(target[-2:].tolist())))
+            return colorful.bold(bitword_to_int([*target[-2].tolist(), *target[-1].tolist()]))
 
     def filter(self, sequence: tensor, dim: int) -> tensor:
         """

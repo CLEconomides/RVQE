@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # mnist01
 
-seeds=( 51801 19342 35675 28847 28722 38358 75343 62339 71350 47611 64490 51422 63763 17796 35557 83224 40797 47253 87583 23424 83502 93806 52495 54785 74155 65123 69520 78119 46386 76720 )
+seeds=( 29203 39060 35605 88615 30218 62354 22195 23481 14629 58825 78763 74317 54341 59416 12173 57478 51841 36516 68534 69542 86216 50816 21675 77289 33313 13904 68515 49315 61697 89319 )
 
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
@@ -12,7 +12,7 @@ sleep $[ ($RANDOM % 40) + 1 ]s
 
 for sd in "${seeds[@]}"; do
 
-    TAG="mnist01-$sd"
+    TAG="mnist-full-$sd"
 
     LOCKFILE="$LOCKFILEFOLDER/experiment-$TAG.lock"
     DONEFILE="$LOCKFILEFOLDER/experiment-$TAG.done"
@@ -40,14 +40,14 @@ for sd in "${seeds[@]}"; do
         --num-shards 3 \
         --epochs 5000 \
         train \
-        --dataset mnist01 \
+        --dataset mnist \
         --workspace 8 \
         --stages 2 \
         --order 2 \
-        --degree 2 \
+        --degree 3 \
         --optimizer adam \
         --learning-rate 0.005 \
-        --batch-size 16
+        --batch-size 50
     
     if  [[ $? -eq 0 ]] ; then
         touch "$DONEFILE"    

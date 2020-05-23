@@ -224,7 +224,7 @@ class DataMNIST(DataMNISTBase):
 
         # we try to keep things balanced; so we fill them up as evenly randomly as possible
         while True:
-            for digit_idx in torch.randperm(len(self.digits)):
+            for digit_idx in torch.randperm(len(self.digits), generator=self.rng):
                 digit = self.digits[digit_idx]
                 data = self._data[digit]
                 idx = torch.randint(0, len(data), (1,), generator=self.rng).item()

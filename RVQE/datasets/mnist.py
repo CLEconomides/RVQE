@@ -192,31 +192,22 @@ class DataMNIST01_Gen(DataMNISTBase):
 
 class DataMNIST(DataMNISTBase):
     """
-        classify all MNIST digits on a 10x10 flattened input binary image of 0s and 1s
+        classify the first eight MNIST digits on a 10x10 flattened input binary image of 0s and 1s
         The last two pixels (each two bits wide) of the target contains the label.
     """
 
     def __init__(self, shard: int, **kwargs):
         super().__init__(
-            shard, digits=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], scanlines=[0, 1, 2], **kwargs
+            shard, digits=[0, 1, 2, 3, 4, 5, 6, 7], scanlines=[0, 1, 2], **kwargs
         )
 
     LABELS = [
-        [[1, 1, 1], [0, 0, 1]],  # 0 -+x    F
-        [[0, 0, 0], [0, 1, 0]],  # 1      m
-        [[0, 1, 0], [1, 0, 1]],  # 2  +  n  F
-        [[1, 0, 1], [1, 1, 0]],  # 3 - x nm
-        [[0, 0, 0], [0, 0, 0]],  # 4
-        [[0, 1, 0], [1, 1, 0]],  # 5  +  nm
-        [[1, 1, 1], [0, 0, 0]],  # 6 -+x
-        [[0, 0, 0], [1, 0, 0]],  # 7     n
-        [[1, 1, 1], [1, 1, 1]],  # 8 -+x nm F
-        [[0, 1, 1], [0, 1, 0]],  # 9  +x  m
+        [int_to_bitword(d, 3)] for d in range(8)
     ]
 
     # last two pixels has to contain the label
     TARGETS = [
-        torch.cat((torch.zeros(98, 3), torch.tensor(label).float())).int().tolist()
+        torch.cat((torch.zeros(99, 3), torch.tensor(label).float())).int().tolist()
         for label in LABELS
     ]
 
@@ -242,7 +233,7 @@ class DataMNIST(DataMNISTBase):
         if offset == 0 and not target.tolist() in DataMNIST.TARGETS:
             return super().to_human(target)
         else:
-            label = target[-2:].tolist()
+            label = target[-1:].tolist()
             return colorful.bold(
                 "?" if not label in DataMNIST.LABELS else str(DataMNIST.LABELS.index(label))
             )
@@ -255,15 +246,15 @@ class DataMNIST(DataMNISTBase):
         assert sequence.dim() == 3 and dim in [1, 2]
 
         if dim == 1:
-            return sequence[:, -2:, :]
+            return sequence[:, -1:, :]
         elif dim == 2:
-            return sequence[:, :, -2:]
+            return sequence[:, :, -1:]
 
     def filter_sentence(self, sentence: tensor) -> tensor:
-        return sentence[-2:]
+        return sentence[-1:]
 
     def ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
         """
             again we expect an input of length 99, so index 97 and 98 are the only ones not ignored
         """
-        return index not in [97, 98]
+        return index not in [98]

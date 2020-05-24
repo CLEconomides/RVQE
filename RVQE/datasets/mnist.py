@@ -4,9 +4,7 @@ import colorful
 
 
 class DataMNISTBase(DataFactory):
-    BIT_LUT = {0: [0, 0], 1: [0, 1], 2: [1, 0], 3: [1, 1]}
-
-    def __init__(self, shard: int, digits: List[int], **kwargs):
+    def __init__(self, shard: int, digits: List[int], scanlines: List[int], **kwargs):
         super().__init__(shard, **kwargs)
 
         # local rng
@@ -17,13 +15,18 @@ class DataMNISTBase(DataFactory):
 
         assert all(d in range(10) for d in digits), "digits have to be between 0 and 9"
         assert len(set(digits)) == len(digits), "duplicate digits"
-
         self.digits = digits
+
+        assert all(s in range(3) for s in scanlines), "scanlines are 0, 1, or 2"
+        assert len(set(scanlines)) == len(scanlines), "duplicate scanlines"
+        self.scanlines = scanlines
+
+        BIT_LUT = {n: tensor(int_to_bitword(n, 3))[scanlines].tolist() for n in range(8)}
 
         # import as list of lists of bitwords
         self._data = {
             digit: [
-                [DataMNISTBase.BIT_LUT[val.item()] for val in row]
+                [BIT_LUT[val.item()] for val in row]
                 for row in tensor(
                     pd.read_csv(
                         path.join(
@@ -44,32 +47,30 @@ class DataMNISTBase(DataFactory):
 
     @property
     def input_width(self) -> tensor:
-        return 2
+        return len(self.scanlines)
 
     def to_human(self, target: tensor, offset: int = 0) -> str:
         # the predicted image is missing the first pixel
         if len(target) == 99:
             target = torch.cat((tensor([[0, 0]]), target))
 
-        # split scanlines: upper row of outputs corresponds to scanning horizontally,
-        # lower row corresponds to scanning vertically
-        target_hor, target_ver = target.transpose(0, 1)
+        # split scanlines
+        targets = target.transpose(0, 1)
 
         # reshape to image
-        target_hor = target_hor.reshape(10, 10)
-        target_ver = target_ver.reshape(10, 10).transpose(0, 1)
+        targets = [t.reshape(10, 10) for t in targets]
 
         # group two rows per image
-        target_hor, target_ver = (
-            [t.transpose(0, 1) for t in tgt.split(2)] for tgt in (target_hor, target_ver)
-        )
+        targets = [ [t.transpose(0, 1) for t in tgt.split(2)] for tgt in targets ]
 
         # print
         PIXEL_REP = " ▄▀█"
         out = ""
-        for line_hor, line_ver in zip(target_hor, target_ver):
-            out += "\t" + "".join(bitword_to_char(d, PIXEL_REP) for d in line_hor)
-            out += "  " + "".join(bitword_to_char(d, PIXEL_REP) for d in line_ver)
+
+        for lines in zip(*targets):
+            out += "\t" + "".join(bitword_to_char(d, PIXEL_REP) for d in lines[0])
+            for line in lines[1:]:
+                out += "  " + "".join(bitword_to_char(d, PIXEL_REP) for d in line)
             out += "\n"
 
         return out[:-1]
@@ -82,7 +83,7 @@ class DataMNIST01(DataMNISTBase):
     """
 
     def __init__(self, shard: int, **kwargs):
-        super().__init__(shard, digits=[0, 1], **kwargs)
+        super().__init__(shard, digits=[0, 1], scanlines=[0, 1], **kwargs)
 
     # last pixel has to contain the label
     TARGET0 = torch.cat((torch.zeros(99, 2), torch.tensor([[0.0, 0]]))).int().tolist()
@@ -155,7 +156,7 @@ class DataMNIST01_Gen(DataMNISTBase):
     """
 
     def __init__(self, shard: int, **kwargs):
-        super().__init__(shard, digits=[0, 1], **kwargs)
+        super().__init__(shard, digits=[0, 1], scanlines=[0, 1], **kwargs)
 
     def next_batch(self) -> Batch:
         # extract random batch of sentences
@@ -196,24 +197,26 @@ class DataMNIST(DataMNISTBase):
     """
 
     def __init__(self, shard: int, **kwargs):
-        super().__init__(shard, digits=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], **kwargs)
+        super().__init__(
+            shard, digits=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], scanlines=[0, 1, 2], **kwargs
+        )
 
     LABELS = [
-        [[0, 0], [0, 0]],
-        [[0, 0], [0, 1]],
-        [[0, 0], [1, 0]],
-        [[0, 0], [1, 1]],
-        [[0, 1], [0, 0]],
-        [[0, 1], [0, 1]],
-        [[0, 1], [1, 0]],
-        [[0, 1], [1, 1]],
-        [[1, 0], [0, 0]],
-        [[1, 0], [0, 1]],
+        [[1, 1, 1], [0, 0, 1]],  # 0 -+x    F
+        [[0, 0, 0], [0, 1, 0]],  # 1      m
+        [[0, 1, 0], [1, 0, 1]],  # 2  +  n  F
+        [[1, 0, 1], [1, 1, 0]],  # 3 - x nm
+        [[0, 0, 0], [0, 0, 0]],  # 4
+        [[0, 1, 0], [1, 1, 0]],  # 5  +  nm
+        [[1, 1, 1], [0, 0, 0]],  # 6 -+x
+        [[0, 0, 0], [1, 0, 0]],  # 7     n
+        [[1, 1, 1], [1, 1, 1]],  # 8 -+x nm F
+        [[0, 1, 1], [0, 1, 0]],  # 9  +x  m
     ]
 
     # last two pixels has to contain the label
     TARGETS = [
-        torch.cat((torch.zeros(98, 2), torch.tensor(label).float())).int().tolist()
+        torch.cat((torch.zeros(98, 3), torch.tensor(label).float())).int().tolist()
         for label in LABELS
     ]
 
@@ -239,7 +242,10 @@ class DataMNIST(DataMNISTBase):
         if offset == 0 and not target.tolist() in DataMNIST.TARGETS:
             return super().to_human(target)
         else:
-            return colorful.bold(bitword_to_int([*target[-2].tolist(), *target[-1].tolist()]))
+            label = target[-2:].tolist()
+            return colorful.bold(
+                "?" if not label in DataMNIST.LABELS else str(DataMNIST.LABELS.index(label))
+            )
 
     def filter(self, sequence: tensor, dim: int) -> tensor:
         """

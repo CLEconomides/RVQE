@@ -42,7 +42,7 @@ for sd in "${seeds[@]}"; do
         train \
         --dataset mnist \
         --workspace 8 \
-        --stages 2 \
+        --stages 1 \
         --order 2 \
         --degree 2 \
         --optimizer adam \

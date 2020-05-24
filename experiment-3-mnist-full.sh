@@ -41,8 +41,8 @@ for sd in "${seeds[@]}"; do
         --epochs 5000 \
         train \
         --dataset mnist \
-        --workspace 8 \
-        --stages 1 \
+        --workspace 7 \
+        --stages 2 \
         --order 2 \
         --degree 2 \
         --optimizer adam \

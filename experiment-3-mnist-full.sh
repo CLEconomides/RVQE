@@ -37,7 +37,7 @@ for sd in "${seeds[@]}"; do
     ./main.py \
         --tag experiment-$TAG \
         --seed $sd \
-        --num-shards 3 \
+        --num-shards 2 \
         --epochs 5000 \
         train \
         --dataset mnist \

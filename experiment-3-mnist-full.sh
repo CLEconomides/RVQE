@@ -37,12 +37,12 @@ for sd in "${seeds[@]}"; do
     ./main.py \
         --tag experiment-$TAG \
         --seed $sd \
-        --num-shards 2 \
+        --num-shards 3 \
         --epochs 5000 \
         train \
         --dataset mnist \
         --workspace 8 \
-        --stages 2 \
+        --stages 1 \
         --order 2 \
         --degree 2 \
         --optimizer adam \

@@ -34,7 +34,7 @@ for sd in "${seeds[@]}"; do
     
     # run test
     echo "running $TAG"
-    ./main.py \
+    OMP_NUM_THREADS=2 ./main.py \
         --tag experiment-$TAG \
         --seed $sd \
         --num-shards 2 \
@@ -47,7 +47,7 @@ for sd in "${seeds[@]}"; do
         --degree 2 \
         --optimizer adam \
         --learning-rate 0.005 \
-        --batch-size 512
+        --batch-size 50
     
     if  [[ $? -eq 0 ]] ; then
         touch "$DONEFILE"    

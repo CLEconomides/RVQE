@@ -220,9 +220,9 @@ class FastQuantumNeuronLayer(nn.Module):
         new_kob_1 = kob_cos_t[1] + kob_sin_t[0]
 
         # stack and permute outlane to its original place
-        return normalize(mark_batch_like(
-            kob, torch.stack([new_kob_0, new_kob_1]).transpose(0, outlane)
-        ))
+        return normalize(
+            mark_batch_like(kob, torch.stack([new_kob_0, new_kob_1]).transpose(0, outlane))
+        )
 
     @staticmethod
     def ancillas_for_order(order: int) -> int:

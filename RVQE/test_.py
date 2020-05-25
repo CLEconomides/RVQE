@@ -40,6 +40,12 @@ def test_apply():
     assert squish_idcs_up("zkxm") == "zwyx"
 
 
+def test_batching():
+    assert is_batch(mark_batch(ket0(5)))
+    assert is_batch(normalize(mark_batch(ket0(2))))
+    assert is_batch(ket_to_batch(ket("+0"), copies=3))
+
+
 # GATE LAYERS
 from .gate_layers import *
 
@@ -96,6 +102,14 @@ def test_gates():
     foo = tensor([[1, 2], [3, 4]], dtype=torch.float)
     assert equal(cmiYLayer(0, 1)(foo), tensor([1.0, 2.0, -4.0, 3.0]))
     assert equal(cmiYLayer(0, 1).T.forward(foo), tensor([1.0, 2.0, 4.0, -3.0]))
+
+
+def test_gates_batched():
+    batch = ket_to_batch(ket("++0"), copies=10)
+    assert is_batch(XLayer(0)(batch))
+    assert is_batch(HLayer(0)(batch))
+    assert is_batch(rYLayer(0, -pi / 2)(batch))
+    assert is_batch(cmiYLayer(0, 1).T.forward(batch))
 
 
 def test_parameter_sharing():
@@ -218,6 +232,23 @@ def test_fast_rvqe_cell():
         ket_to_batch(ket0(5), copies=1), torch.LongTensor([[1]])
     )[0][0][0]
     temp.backward()
+
+
+def test_rvqe():
+    for fast in [True, False]:
+        rvqe = RVQE(workspace_size=2, input_size=1, stages=1, order=2, fast=fast)
+        probs, measured_seq, min_ps_prob = rvqe(
+            tensor(
+                [[[0], [1], [1], [1], [1]], [[1], [1], [1], [1], [1]], [[0], [0], [0], [0], [0]]]
+            ),
+            tensor(
+                [[[1], [1], [0], [0], [0]], [[1], [1], [0], [0], [0]], [[0], [0], [0], [0], [0]]]
+            ),
+            postselect_measurement=False,
+        )
+        assert min_ps_prob == 1.0
+        assert probs.shape == torch.Size([3, 2, 4])  # BATCH x CLASS x LENGTH
+        assert measured_seq.shape == torch.Size([3, 4, 1])  # BATCH x LENGTH x Bitvector Size
 
 
 # DATA

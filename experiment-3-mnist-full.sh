@@ -37,7 +37,7 @@ for sd in "${seeds[@]}"; do
     ./main.py \
         --tag experiment-$TAG \
         --seed $sd \
-        --num-shards 3 \
+        --num-shards 2 \
         --epochs 5000 \
         train \
         --dataset mnist \
@@ -47,7 +47,7 @@ for sd in "${seeds[@]}"; do
         --degree 2 \
         --optimizer adam \
         --learning-rate 0.005 \
-        --batch-size 10
+        --batch-size 512
     
     if  [[ $? -eq 0 ]] ; then
         touch "$DONEFILE"    

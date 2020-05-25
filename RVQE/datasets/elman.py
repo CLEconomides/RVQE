@@ -24,9 +24,6 @@ class DataElmanXOR(DataFactory):
     def __init__(self, shard: int, **kwargs):
         super().__init__(shard, **kwargs)
 
-        # local rng
-        self.rng = torch.Generator().manual_seed(8742 + shard)
-
     @property
     def _batches(self) -> List[Batch]:
         raise NotImplementedError("next_batch overridden")
@@ -143,9 +140,6 @@ class DataElmanLetter(DataFactory):
 
     def __init__(self, shard: int, **kwargs):
         super().__init__(shard, **kwargs)
-
-        # local rng
-        self.rng = torch.Generator().manual_seed(8742 + shard)
 
     @property
     def _batches(self) -> List[Batch]:

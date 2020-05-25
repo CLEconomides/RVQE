@@ -11,7 +11,7 @@ class DataShakespeare(DataFactory):
     def _load_shakespeare():
         import os.path as path
 
-        SHAKESPEARE_PATH = path.join(path.dirname(path.abspath(__file__)), "shakespeare.txt")
+        SHAKESPEARE_PATH = path.join(path.dirname(path.abspath(__file__)), "res/shakespeare.txt")
 
         DataShakespeare._data = []
 
@@ -51,9 +51,6 @@ class DataShakespeare(DataFactory):
 
     def __init__(self, shard: int, **kwargs):
         super().__init__(shard, **kwargs)
-
-        # local rng
-        self.rng = torch.Generator().manual_seed(8742 + shard)
 
         if self._data == None:
             self._load_shakespeare()

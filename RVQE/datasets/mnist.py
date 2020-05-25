@@ -7,9 +7,6 @@ class DataMNISTBase(DataFactory):
     def __init__(self, shard: int, digits: List[int], scanlines: List[int], **kwargs):
         super().__init__(shard, **kwargs)
 
-        # local rng
-        self.rng = torch.Generator().manual_seed(293784 + shard)
-
         import os.path as path
         import pandas as pd
 
@@ -31,7 +28,7 @@ class DataMNISTBase(DataFactory):
                     pd.read_csv(
                         path.join(
                             path.dirname(path.abspath(__file__)),
-                            f"mnist-simple-{digit}-train.csv.gz",
+                            f"res/mnist-simple-{digit}-train.csv.gz",
                         ),
                         header=None,
                         compression="gzip",

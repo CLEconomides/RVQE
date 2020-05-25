@@ -98,7 +98,10 @@ class DataFactory(ABC):
         self.num_shards = num_shards
         self.batch_size = batch_size
         self.sentence_length = sentence_length
-        self._index = self.shard  # initial offset dependent on shard
+        # initial offset dependent on shard
+        self._index = self.shard
+        # local rng; derives seed from seed set in environment
+        self.rng = torch.Generator().manual_seed(torch.randint(10 ** 10, (1,)).item() + shard)
 
     def next_batch(self) -> Batch:
         # extract batch and advance pointer

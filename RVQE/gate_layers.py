@@ -1,6 +1,6 @@
 from typing import Union, List, Tuple
 
-from .quantum import apply, num_operator_qubits, normalize, dot, ket, ctrlMat
+from .quantum import *
 import torch
 from torch import nn, tensor
 
@@ -23,7 +23,7 @@ class GateLayer(nn.Module):
         self._id = _gate_layer_id
 
     @property
-    def Ut(self) -> tensor:
+    def Ut(self) -> Operator:
         U = self.U
         shape = U.shape
         dim = tensor(U.shape[: len(U.shape) // 2]).prod()  # product of half of the dimensions
@@ -35,9 +35,9 @@ class GateLayer(nn.Module):
         new.dagger = not new.dagger
         return new
 
-    def forward(self, psi: tensor, normalize_afterwards: bool = False) -> tensor:
-        psi = apply(self.U if not self.dagger else self.Ut, psi, self.lanes)
-        return psi if not normalize_afterwards else normalize(psi)
+    def forward(self, kob: KetOrBatch, normalize_afterwards: bool = False) -> KetOrBatch:
+        kob = apply(self.U if not self.dagger else self.Ut, kob, self.lanes)
+        return kob if not normalize_afterwards else normalize(kob)
 
     def extra_repr(self):
         return f"lanes={self.lanes}, id={self._id}{', †' if self.dagger else ''}"
@@ -81,7 +81,7 @@ class rYLayer(GateLayer):
             self._U = self.U
 
     @property
-    def U(self) -> tensor:
+    def U(self) -> Operator:
         if hasattr(self, "_U"):
             return self._U
 
@@ -112,7 +112,7 @@ class crYLayer(GateLayer):
         self.φ = nn.Parameter(tensor(initial_φ))
 
     @property
-    def U(self) -> tensor:
+    def U(self) -> Operator:
         # note: these matrices are TRANSPOSED! in this notation
         φ = self.φ
         rY = torch.stack(
@@ -149,8 +149,8 @@ class PostselectLayer(GateLayer):
         self.U = torch.zeros(4).reshape(2, 2)
         self.U[on, on] = 1.0
 
-    def forward(self, psi: tensor) -> tensor:
-        return super().forward(psi, normalize_afterwards=True)
+    def forward(self, kob: KetOrBatch) -> KetOrBatch:
+        return super().forward(kob, normalize_afterwards=True)
 
     def extra_repr(self):
         return super().extra_repr() + f", on={self.on}"

@@ -80,7 +80,7 @@ class DataSimpleQuotes(DataFactory):
 
     CONSONANTS = "bcdfghjklmnpqrstvwxyz"
 
-    def ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
+    def _ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
         """
             return True for consonant targets
         """

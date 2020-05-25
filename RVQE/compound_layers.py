@@ -25,8 +25,8 @@ def _T_gate_list(gates: List[GateLayer]) -> List[GateLayer]:
 
 
 class CompoundLayer(nn.Module):
-    def forward(self, psi: tensor) -> tensor:
-        return self.gates.forward(psi)
+    def forward(self, kob: KetOrBatch) -> KetOrBatch:
+        return self.gates.forward(kob)
 
 
 class BitFlipLayer(CompoundLayer):
@@ -194,7 +194,7 @@ class FastQuantumNeuronLayer(nn.Module):
         self.θ = nn.Parameter(tensor(0.0))  # bias
 
     @property
-    def _sin_cos_op(self) -> Tuple[tensor, tensor]:
+    def _sin_cos_op(self) -> Tuple[Ket, Ket]:
         ten = 0.5 * ((self._ten * self.φ).sum(axis=1) + self.θ + self.bias)
 
         sin_op = ten.sin() ** (2 ** self.order)
@@ -203,23 +203,26 @@ class FastQuantumNeuronLayer(nn.Module):
         shape = [2] * len(self.sourcelanes)
         return sin_op.reshape(*shape), cos_op.reshape(*shape)
 
-    def forward(self, psi: tensor) -> tensor:
+    def forward(self, kob: KetOrBatch) -> KetOrBatch:
         sin_op, cos_op = self._sin_cos_op
+        outlane = self.outlane + (1 if is_batch(kob) else 0)
 
         # rescale vector with sin and cos prefactors applied
-        psi_sin = apply_entrywise(sin_op, psi, self.sourcelanes)
-        psi_cos = apply_entrywise(cos_op, psi, self.sourcelanes)
+        kob_sin = apply_entrywise(sin_op, kob, self.sourcelanes)
+        kob_cos = apply_entrywise(cos_op, kob, self.sourcelanes)
 
-        # move outlane index to end
-        psi_cos_t = psi_cos.transpose(self.outlane, 0)
-        psi_sin_t = psi_sin.transpose(self.outlane, 0)
+        # move outlane index to front (works with batches)
+        kob_cos_t = kob_cos.transpose(outlane, 0)
+        kob_sin_t = kob_sin.transpose(outlane, 0)
 
         # create rotated variant of vector
-        new_psi_0 = psi_cos_t[0] - psi_sin_t[1]
-        new_psi_1 = psi_cos_t[1] + psi_sin_t[0]
+        new_kob_0 = kob_cos_t[0] - kob_sin_t[1]
+        new_kob_1 = kob_cos_t[1] + kob_sin_t[0]
 
-        # stack and permute last index to its original place
-        return normalize(torch.stack([new_psi_0, new_psi_1]).transpose(self.outlane, 0))
+        # stack and permute outlane to its original place
+        return normalize(mark_batch_like(
+            kob, torch.stack([new_kob_0, new_kob_1]).transpose(0, outlane)
+        ))
 
     @staticmethod
     def ancillas_for_order(order: int) -> int:

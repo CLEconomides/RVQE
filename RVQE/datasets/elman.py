@@ -95,7 +95,7 @@ class DataElmanXOR(DataFactory):
     def filter_sentence(self, sentence: tensor) -> tensor:
         return sentence[1::3]
 
-    def ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
+    def _ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
         """
             return True for the steps
             01 110 000 011
@@ -199,7 +199,7 @@ class DataElmanLetter(DataFactory):
         # if we start with a consonant, trim one space off
         return out if target[0] not in [4, 5, 6, 7] else out[1:]
 
-    def ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
+    def _ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
         """
             return True for consonant targets
         """

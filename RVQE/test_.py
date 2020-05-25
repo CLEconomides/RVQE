@@ -195,16 +195,17 @@ def test_slow_fast_qn_equivalence(capsys):
 
 # RVQE
 from .model import *
+import sys
 
 
-def test_rvqe_cell():
+def test_rvqe_cell(capsys):
     assert (
         RVQECell(workspace_size=4, input_size=1, stages=1, order=2, fast=False).num_qubits
         == 4 + 1 + 2
     )
     temp = RVQECell(workspace_size=4, input_size=1, stages=1, order=2, fast=False).forward(
-        ket0(7), [1]
-    )[0][0]
+        ket_to_batch(ket0(7), copies=1), torch.LongTensor([[1]])
+    )[0][0][0]
     temp.backward()
 
 
@@ -214,8 +215,8 @@ def test_fast_rvqe_cell():
         == 4 + 1 + 0
     )
     temp = RVQECell(workspace_size=4, input_size=1, stages=1, order=2, fast=True).forward(
-        ket0(5), [1]
-    )[0][0]
+        ket_to_batch(ket0(5), copies=1), torch.LongTensor([[1]])
+    )[0][0][0]
     temp.backward()
 
 

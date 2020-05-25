@@ -7,7 +7,7 @@ from .compound_layers import (
     BitFlipLayer,
     PostselectManyLayer,
 )
-from .quantum import tensor, ket0, probabilities, num_state_qubits
+from .quantum import *
 from .data import zip_with_offset, int_to_bitword, bitword_to_int, Bitword
 
 import torch
@@ -106,25 +106,39 @@ class RVQECell(nn.Module):
     def num_qubits(self) -> int:
         return len(self.ancillas) + len(self.workspace) + len(self.inout)
 
-    def forward(self, psi: tensor, input: Bitword) -> Tuple[tensor, tensor]:
-        # we assume psi has its input lanes reset to 0
-        assert len(input) == len(self.inout), "wrong input size given"
-        assert num_state_qubits(psi) == self.num_qubits, "state given does not have the right size"
+    def forward(self, batch: KetBatch, inputs: torch.LongTensor) -> Tuple[KetBatch, KetBatch]:
+        """
+            we expect a batch of states and inputs
+        """
+        # we assume all psi's in kob has its input lanes reset to 0
+        assert inputs.shape[-1] == len(self.inout), "wrong input size given"
+        assert (
+            num_state_qubits(batch) == self.num_qubits
+        ), "state given does not have the right size"
+        assert is_batch(batch) and inputs.dim() == 2, "expecting batched call"
 
-        bitflip_layer = self.bitflip_for(input)
+        # set input
+        batch = self.bitflip_batch(batch, inputs)
 
         # input and kernel layers don't write to the inout lanes, it is read only
-        psi = bitflip_layer.forward(psi)
-        psi = self.input_layer.forward(psi)
-        psi = self.kernel_layer.forward(psi)
+        batch = self.input_layer.forward(batch)
+        batch = self.kernel_layer.forward(batch)
 
-        # reset inout lanes to 000, then write output
-        psi = bitflip_layer.forward(psi)
-        psi = self.output_layer.forward(psi)
+        # reset input
+        batch = self.bitflip_batch(batch, inputs)
 
-        return probabilities(psi, self.inout), psi
+        # write to output layer
+        batch = self.output_layer.forward(batch)
 
-    def bitflip_for(self, input: Bitword) -> BitFlipLayer:
+        return probabilities(batch, self.inout), batch
+
+    def bitflip_batch(self, batch: KetBatch, inputs: torch.LongTensor) -> KetBatch:
+        # reset input one batch element at a time
+        for i, inpt in enumerate(inputs):
+            batch[i] = self._bitflip_for(inpt).forward(batch[i])
+        return batch
+
+    def _bitflip_for(self, input: Bitword) -> BitFlipLayer:
         return BitFlipLayer([lane for i, lane in enumerate(self.inout) if input[i] == 1])
 
 
@@ -135,66 +149,79 @@ class RVQE(nn.Module):
 
     def forward(
         self,
-        inputs: tensor,
-        targets: tensor,
+        inputs: torch.LongTensor,
+        targets: torch.LongTensor,
         postselect_measurement: Union[bool, Callable[[int], bool]],
-    ) -> Tuple[tensor, tensor, float]:
+    ) -> Tuple[KetOrBatch, KetOrBatch, float]:
+        assert inputs.shape == targets.shape, "inputs and targets have to have same shape"
+        assert inputs.dim() in [2, 3], "unbatched input has to have dim 2, batched dim 3"
+
+        # prepare batch
+        was_batched = inputs.dim() == 3
+
+        if not was_batched:
+            inputs = inputs.unsqueeze(0)
+            targets = targets.unsqueeze(0)
+
+        BATCH = batch_size(inputs)
+
         if isinstance(postselect_measurement, bool):
             # return callback that gives constant
             _postselect_measurement = postselect_measurement
-            postselect_measurement = lambda _, __: _postselect_measurement
+            postselect_measurement = lambda _, trgt: tensor(_postselect_measurement).expand(BATCH)
 
-        # batched call; return stacked result
-        if inputs.dim() == 3:
-            assert targets.dim() == 3, "inputs have dimension 3, but targets not"
-            batch_measured_seq = []
-            batch_probs = []
-            min_postsel_prob = 1.0
-            for inpt, trgt in zip(inputs, targets):
-                probs, measured_seq, _min_postel_prob = self.forward(
-                    inpt, trgt, postselect_measurement
-                )
-                batch_probs.append(probs)
-                batch_measured_seq.append(measured_seq)
-                min_postsel_prob = min(min_postsel_prob, _min_postel_prob)
+        # now the shape of the input and target tensors is
+        # BATCH x LEN x WIDTH
+        # but we need
+        # LEN x BATCH x WIDTH
+        inputs = inputs.transpose(0, 1)
+        targets = targets.transpose(0, 1)
 
-            # we transpose the batch_probs such that the len dimension comes last
-            return (
-                torch.stack(batch_probs).transpose(1, 2),
-                torch.stack(batch_measured_seq),
-                min_postsel_prob,
-            )
+        kob = ket0(self.cell.num_qubits)
+        kob = ket_to_batch(ket0(self.cell.num_qubits), copies=BATCH)
 
-        # normal call
-        assert (
-            inputs.dim() == 2 and targets.dim() == 2
-        ), "inputs have to have dimension 3 (1st batch) or 2 (list of int lists)"
-
-        psi = ket0(self.cell.num_qubits)
         probs = []
         measured_seq = []
-        min_postsel_prob = 1.0
+        min_postsel_prob = tensor(1.0)
 
         for i, (inpt, trgt) in enumerate(zip_with_offset(inputs, targets)):
-            p, psi = self.cell.forward(psi, inpt)
+            p, kob = self.cell.forward(kob, inpt)
             probs.append(p)
 
-            # measure output
-            if postselect_measurement(i, trgt):
-                measure = trgt
-                min_postsel_prob = min(min_postsel_prob, float(p[bitword_to_int(measure)]))
-            else:
-                output_distribution = torch.distributions.Categorical(probs=p)
-                measure = tensor(
-                    int_to_bitword(output_distribution.sample(), width=len(self.cell.inout))
-                )
+            # measure or postselect output
+            output_distribution = torch.distributions.Categorical(probs=p)
+            ps_mask = postselect_measurement(i, trgt)
+            sampled_trgt = tensor(
+                [
+                    int_to_bitword(sample, width=len(self.cell.inout))
+                    for sample in output_distribution.sample()
+                ]
+            )
 
+            measure = torch.where(ps_mask.unsqueeze(1).expand_as(trgt), trgt, sampled_trgt)
+            kob = PostselectManyLayer(self.cell.inout, measure).forward(kob)
+            postsel_prob = p[:, [bitword_to_int(m) for m in measure]]
+
+            if any(ps_mask):
+                min_postsel_prob = min(min_postsel_prob, postsel_prob[ps_mask].min())
             measured_seq.append(measure)
-            psi = PostselectManyLayer(self.cell.inout, measure).forward(psi)
 
             # reset qubits
-            psi = self.cell.bitflip_for(measure).forward(psi)
+            kob = self.cell.bitflip_batch(kob, measure)
 
         probs = torch.stack(probs)
         measured_seq = torch.stack(measured_seq)
-        return probs, measured_seq, min_postsel_prob
+
+        # shape of probs and measured sequence is
+        # LEN x BATCH x WIDTH
+        # but want
+        # BATCH x LEN x WIDTH for measured_seq, and
+        # BATCH x WIDTH x LEN for probs, as for loss we need BATCH x CLASS x d
+
+        measured_seq = measured_seq.transpose(0, 1)
+        probs = probs.transpose(0, 1).transpose(1, 2)
+
+        if was_batched:
+            return probs, measured_seq, min_postsel_prob.item()
+        else:
+            return probs[0], measured_seq[0], min_postsel_prob.item()

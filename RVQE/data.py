@@ -149,9 +149,14 @@ class DataFactory(ABC):
     def filter_sentence(self, sentence: tensor) -> tensor:
         return sentence
 
-    def ignore_output_at_step(self, index: int, target: Union[Bitword, tensor]) -> bool:
+    def _ignore_output_at_step(self, index: int, target: Union[torch.LongTensor, Bitword]) -> bool:
+        return False
+
+    def ignore_output_at_step(self, index: int, targets: torch.LongTensor) -> bool:
         """
             return True if the output at this step is not expected
             to be a specific target; which means we can postselect it (using OAA)
+            targets can be a batch or Bitword; we expect subclasses to override the _ method
+            and simply stack the result
         """
-        return False
+        return tensor([self._ignore_output_at_step(index, target) for target in targets])

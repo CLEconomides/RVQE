@@ -61,7 +61,7 @@ class DataMNISTBase(DataFactory):
         targets = [t.reshape(10, 10) for t in targets]
 
         # group two rows per image
-        targets = [ [t.transpose(0, 1) for t in tgt.split(2)] for tgt in targets ]
+        targets = [[t.transpose(0, 1) for t in tgt.split(2)] for tgt in targets]
 
         # print
         PIXEL_REP = " ▄▀█"
@@ -141,7 +141,7 @@ class DataMNIST01(DataMNISTBase):
     def filter_sentence(self, sentence: tensor) -> tensor:
         return sentence[-1:]
 
-    def ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
+    def _ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
         """
             again we expect an input of length 99, so index 98 is the only one not ignored
         """
@@ -197,13 +197,9 @@ class DataMNIST(DataMNISTBase):
     """
 
     def __init__(self, shard: int, **kwargs):
-        super().__init__(
-            shard, digits=[0, 1, 2, 3, 4, 5, 6, 7], scanlines=[0, 1, 2], **kwargs
-        )
+        super().__init__(shard, digits=[0, 1, 2, 3, 4, 5, 6, 7], scanlines=[0, 1, 2], **kwargs)
 
-    LABELS = [
-        [int_to_bitword(d, 3)] for d in range(8)
-    ]
+    LABELS = [[int_to_bitword(d, 3)] for d in range(8)]
 
     # last two pixels has to contain the label
     TARGETS = [
@@ -253,7 +249,7 @@ class DataMNIST(DataMNISTBase):
     def filter_sentence(self, sentence: tensor) -> tensor:
         return sentence[-1:]
 
-    def ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
+    def _ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
         """
             again we expect an input of length 99, so index 97 and 98 are the only ones not ignored
         """

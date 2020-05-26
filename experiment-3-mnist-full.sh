@@ -46,7 +46,7 @@ for sd in "${seeds[@]}"; do
         --order 2 \
         --degree 2 \
         --optimizer adam \
-        --learning-rate 0.005 \
+        --learning-rate 0.05 \
         --batch-size 50
     
     if  [[ $? -eq 0 ]] ; then

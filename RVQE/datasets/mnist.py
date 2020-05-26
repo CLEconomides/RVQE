@@ -73,18 +73,18 @@ class DataMNISTBase(DataFactory):
         return out[:-1]
 
 
-class DataMNIST01(DataMNISTBase):
+class DataMNISTTwoDigitBase(DataMNISTBase):
     """
-        classify 0 and 1 on a 10x10 flattened input binary image of 0s and 1s
+        classify two digits on a 10x10 flattened input binary image of e.g. 0s and 1s
         The last pixel of the target contains the label.
     """
 
-    def __init__(self, shard: int, **kwargs):
-        super().__init__(shard, digits=[0, 1], scanlines=[0, 1], **kwargs)
+    def __init__(self, shard: int, digits: List[int], **kwargs):
+        super().__init__(shard, digits=digits, scanlines=[0, 1], **kwargs)
 
     # last pixel has to contain the label
-    TARGET0 = torch.cat((torch.zeros(99, 2), torch.tensor([[0.0, 0]]))).int().tolist()
-    TARGET1 = torch.cat((torch.zeros(99, 2), torch.tensor([[0.0, 1]]))).int().tolist()
+    TARGET_A = torch.cat((torch.zeros(99, 2), torch.tensor([[0.0, 0]]))).int().tolist()
+    TARGET_B = torch.cat((torch.zeros(99, 2), torch.tensor([[0.0, 1]]))).int().tolist()
 
     def next_batch(self) -> Batch:
         # extract random batch of sentences
@@ -92,10 +92,9 @@ class DataMNIST01(DataMNISTBase):
         targets = []
 
         # we try to keep it balanced between 0 and 1, even if batch size is 1, and multiple shards are used
-        dataA = self._data[0]
-        dataB = self._data[1]
-        targetA = DataMNIST01.TARGET0
-        targetB = DataMNIST01.TARGET1
+        dataA, dataB = (self._data[d] for d in self.digits)
+        targetA = DataMNISTTwoDigitBase.TARGET_A
+        targetB = DataMNISTTwoDigitBase.TARGET_B
         if self.shard % 2 == 1:
             dataA, dataB = dataB, dataA
             targetA, targetB = targetB, targetA
@@ -116,12 +115,13 @@ class DataMNIST01(DataMNISTBase):
     def to_human(self, target: tensor, offset: int = 0) -> str:
         if (
             offset == 0
-            and not target.tolist() == DataMNIST01.TARGET0
-            and not target.tolist() == DataMNIST01.TARGET1
+            and not target.tolist() == DataMNISTTwoDigitBase.TARGET_A
+            and not target.tolist() == DataMNISTTwoDigitBase.TARGET_B
         ):
             return super().to_human(target)
         else:
-            return colorful.bold(bitword_to_str(target[-1]))
+            labels = "".join([str(d) for d in self.digits]) + "??"
+            return colorful.bold(bitword_to_char(target[-1], labels))
 
     def filter(self, sequence: tensor, dim: int) -> tensor:
         """
@@ -143,6 +143,16 @@ class DataMNIST01(DataMNISTBase):
             again we expect an input of length 99, so index 98 is the only one not ignored
         """
         return index != 98
+
+
+class DataMNIST01(DataMNISTTwoDigitBase):
+    def __init__(self, shard: int, **kwargs):
+        super().__init__(shard, digits=[0, 1], **kwargs)
+
+
+class DataMNIST36(DataMNISTTwoDigitBase):
+    def __init__(self, shard: int, **kwargs):
+        super().__init__(shard, digits=[3, 6], **kwargs)
 
 
 class DataMNIST01_Gen(DataMNISTBase):
@@ -194,18 +204,17 @@ class DataMNIST(DataMNISTBase):
     """
 
     def __init__(self, shard: int, **kwargs):
-        super().__init__(shard, digits=[0, 1, 2, 3, 4, 5, 6, 7], scanlines=[0, 1, 2], **kwargs)
+        super().__init__(shard, digits=[0, 1, 4, 8], scanlines=[0, 1], **kwargs)
 
     LABELS = [
-        [[1, 0, 0]], #0
-        [[0, 1, 0]], #1
-        [[0, 1, 1]], #2
-        [[0, 0, 1]], #3
-
-        [[0, 0, 0]], #4
-        [[1, 0, 1]], #5
-        [[1, 1, 1]], #6
-        [[1, 1, 0]], #7
+        [[1, 0, 0]],  # 0
+        [[0, 1, 0]],  # 1
+        [[0, 1, 1]],  # 2
+        [[0, 0, 1]],  # 3
+        [[0, 0, 0]],  # 4
+        [[1, 0, 1]],  # 5
+        [[1, 1, 1]],  # 6
+        [[1, 1, 0]],  # 7
     ]
 
     # last two pixels has to contain the label

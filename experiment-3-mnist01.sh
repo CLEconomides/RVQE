@@ -6,13 +6,20 @@ seeds=( 51801 19342 35675 28847 28722 38358 75343 62339 71350 47611 64490 51422 
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
 
+DATASET=$1
+
+if [[ "$DATASET" != mnist01 && "$DATASET" != mnist36 ]] ; then
+    echo "invalid dataset $DATASET"
+    exit 1
+fi
+
 trap "exit" INT
 sleep $[ ($RANDOM % 40) + 1 ]s
 
 
 for sd in "${seeds[@]}"; do
 
-    TAG="mnist01-$sd"
+    TAG="$DATASET-$sd"
 
     LOCKFILE="$LOCKFILEFOLDER/experiment-$TAG.lock"
     DONEFILE="$LOCKFILEFOLDER/experiment-$TAG.done"
@@ -37,17 +44,17 @@ for sd in "${seeds[@]}"; do
     ./main.py \
         --tag experiment-$TAG \
         --seed $sd \
-        --num-shards 3 \
+        --num-shards 2 \
         --epochs 5000 \
         train \
-        --dataset mnist01 \
+        --dataset $DATASET \
         --workspace 8 \
         --stages 2 \
         --order 2 \
         --degree 2 \
         --optimizer adam \
-        --learning-rate 0.005 \
-        --batch-size 16
+        --learning-rate 0.01 \
+        --batch-size 50
     
     if  [[ $? -eq 0 ]] ; then
         touch "$DONEFILE"    

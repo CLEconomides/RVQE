@@ -196,7 +196,17 @@ class DataMNIST(DataMNISTBase):
     def __init__(self, shard: int, **kwargs):
         super().__init__(shard, digits=[0, 1, 2, 3, 4, 5, 6, 7], scanlines=[0, 1, 2], **kwargs)
 
-    LABELS = [[int_to_bitword(d, 3)] for d in range(8)]
+    LABELS = [
+        [[1, 0, 0]], #0
+        [[0, 1, 0]], #1
+        [[0, 1, 1]], #2
+        [[0, 0, 1]], #3
+
+        [[0, 0, 0]], #4
+        [[1, 0, 1]], #5
+        [[1, 1, 1]], #6
+        [[1, 1, 0]], #7
+    ]
 
     # last two pixels has to contain the label
     TARGETS = [

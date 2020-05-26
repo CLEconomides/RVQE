@@ -1,18 +1,32 @@
 from ..data import *
 
 import colorful
+import pandas as pd
+import math
+import os.path as path
 
 
 class DataMNISTBase(DataFactory):
+    @staticmethod
+    def _import_csv(filename: str) -> torch.LongTensor:
+        return tensor(
+            pd.read_csv(
+                path.join(path.dirname(path.abspath(__file__)), filename,),
+                header=None,
+                compression="gzip",
+            ).values
+        )
+
     def __init__(self, shard: int, digits: List[int], scanlines: List[int], **kwargs):
         super().__init__(shard, **kwargs)
-
-        import os.path as path
-        import pandas as pd
+        self.overrides_batch_size = True
 
         assert all(d in range(10) for d in digits), "digits have to be between 0 and 9"
         assert len(set(digits)) == len(digits), "duplicate digits"
         self.digits = digits
+
+        # a batch of size 10 means 10 examples for each digit here
+        self.batch_size *= len(digits)
 
         assert all(s in range(3) for s in scanlines), "scanlines are 0, 1, or 2"
         assert len(set(scanlines)) == len(scanlines), "duplicate scanlines"
@@ -24,19 +38,35 @@ class DataMNISTBase(DataFactory):
         self._data = {
             digit: [
                 [BIT_LUT[val.item()] for val in row]
-                for row in tensor(
-                    pd.read_csv(
-                        path.join(
-                            path.dirname(path.abspath(__file__)),
-                            f"res/mnist-simple-{digit}-train.csv.gz",
-                        ),
-                        header=None,
-                        compression="gzip",
-                    ).values
-                )
+                for row in DataMNISTBase._import_csv(f"res/mnist-simple-{digit}-train.csv.gz")
             ]
             for digit in digits
         }
+
+        # import centroids
+        self._data_centroids = {
+            digit: [BIT_LUT[val.item()] for val in row]
+            for digit, row in enumerate(DataMNISTBase._import_csv("res/mnist-centroids.csv.gz"))
+        }
+
+        self.num_scanlines = len(scanlines)  # number of in/out qubits
+        self.LABELS = [
+            pad_and_chunk(int_to_bitword(i), self.num_scanlines) for i in range(len(digits))
+        ]
+        self.label_length = len(self.LABELS[0])  # over how many measurements is the label spread
+
+        # last pixels contain the label
+        self.TARGETS = [
+            torch.cat(
+                (
+                    torch.zeros(100 - self.label_length, self.num_scanlines),
+                    torch.tensor(label).float(),
+                )
+            )
+            .int()
+            .tolist()
+            for label in self.LABELS
+        ]
 
     @property
     def _batches(self) -> List[Batch]:
@@ -46,25 +76,53 @@ class DataMNISTBase(DataFactory):
     def input_width(self) -> tensor:
         return len(self.scanlines)
 
-    def to_human(self, target: tensor, offset: int = 0) -> str:
+    def next_batch(self, step: int) -> Batch:
+        # extract random batch of sentences
+        sentences = []
+        targets = []
+
+        # we switch back and forth between centroid and general samples
+        ANNEALING_PERIOD = 250
+        frac_centroids = math.cos(10 * step / (2 * math.pi) / ANNEALING_PERIOD) ** 4
+        centroid_samples = round(self.batch_size * frac_centroids)
+        normal_samples = self.batch_size - centroid_samples
+
+        # get normal samples
+        for _ in range(normal_samples):
+            for digit_idx, digit in enumerate(self.digits):
+                data = self._data[digit]
+                data_idx = torch.randint(0, len(data), (1,), generator=self.rng).item()
+                sentences.append(data[data_idx])
+                targets.append(self.TARGETS[digit_idx])
+
+        # get centroid samples (yes, this adds the same sample multiple times)
+        for _ in range(centroid_samples):
+            for digit_idx, digit in enumerate(self.digits):
+                sentences.append(self._data_centroids[digit])
+                targets.append(self.TARGETS[digit_idx])
+
+        # turn into batch
+        return self._sentences_to_batch(sentences, targets)
+
+    def _print_as_images(self, target: torch.LongTensor, offset: int = 0) -> str:
         # the predicted image is missing the first pixel
         if len(target) == 99:
-            target = torch.cat((tensor([[0, 0]]), target))
+            target = torch.cat((torch.zeros(1, self.num_scanlines, dtype=int), target))
 
         # split scanlines
-        targets = target.transpose(0, 1)
+        scanlines = target.transpose(0, 1)
 
         # reshape to image
-        targets = [t.reshape(10, 10) for t in targets]
+        images = [t.reshape(10, 10) for t in scanlines]
 
         # group two rows per image
-        targets = [[t.transpose(0, 1) for t in tgt.split(2)] for tgt in targets]
+        images = [[t.transpose(0, 1) for t in img.split(2)] for img in images]
 
         # print
         PIXEL_REP = " ▄▀█"
         out = ""
 
-        for lines in zip(*targets):
+        for lines in zip(*images):
             out += "\t" + "".join(bitword_to_char(d, PIXEL_REP) for d in lines[0])
             for line in lines[1:]:
                 out += "  " + "".join(bitword_to_char(d, PIXEL_REP) for d in line)
@@ -72,87 +130,55 @@ class DataMNISTBase(DataFactory):
 
         return out[:-1]
 
-
-class DataMNISTTwoDigitBase(DataMNISTBase):
-    """
-        classify two digits on a 10x10 flattened input binary image of e.g. 0s and 1s
-        The last pixel of the target contains the label.
-    """
-
-    def __init__(self, shard: int, digits: List[int], **kwargs):
-        super().__init__(shard, digits=digits, scanlines=[0, 1], **kwargs)
-
-    # last pixel has to contain the label
-    TARGET_A = torch.cat((torch.zeros(99, 2), torch.tensor([[0.0, 0]]))).int().tolist()
-    TARGET_B = torch.cat((torch.zeros(99, 2), torch.tensor([[0.0, 1]]))).int().tolist()
-
-    def next_batch(self) -> Batch:
-        # extract random batch of sentences
-        sentences = []
-        targets = []
-
-        # we try to keep it balanced between 0 and 1, even if batch size is 1, and multiple shards are used
-        dataA, dataB = (self._data[d] for d in self.digits)
-        targetA = DataMNISTTwoDigitBase.TARGET_A
-        targetB = DataMNISTTwoDigitBase.TARGET_B
-        if self.shard % 2 == 1:
-            dataA, dataB = dataB, dataA
-            targetA, targetB = targetB, targetA
-
-        while len(sentences) < self.batch_size // 2:
-            idx = torch.randint(0, len(dataA), (1,), generator=self.rng).item()
-            sentences.append(dataA[idx])
-            targets.append(targetA)
-
-        while len(sentences) < self.batch_size:
-            idx = torch.randint(0, len(dataB), (1,), generator=self.rng).item()
-            sentences.append(dataB[idx])
-            targets.append(targetB)
-
-        # turn into batch
-        return self._sentences_to_batch(sentences, targets)
-
-    def to_human(self, target: tensor, offset: int = 0) -> str:
-        if (
-            offset == 0
-            and not target.tolist() == DataMNISTTwoDigitBase.TARGET_A
-            and not target.tolist() == DataMNISTTwoDigitBase.TARGET_B
-        ):
-            return super().to_human(target)
+    def to_human(self, target: torch.LongTensor, offset: int = 0) -> str:
+        if offset == 0 and not target.tolist() in self.TARGETS:
+            return self._print_as_images(target)
         else:
-            labels = "".join([str(d) for d in self.digits]) + "??"
-            return colorful.bold(bitword_to_char(target[-1], labels))
+            label = target[-self.label_length :].tolist()
+            if label in self.LABELS:
+                return colorful.bold(str(self.digits[self.LABELS.index(label)]))
+            else:
+                return colorful.bold("?")
 
     def filter(self, sequence: tensor, dim: int) -> tensor:
         """
             we expect these to be offset by 1 from a proper output of length 100, i.e. only of length 99
-            we only care about the last pixel
+            we only care about the last self.label_length pixels
         """
         assert sequence.dim() == 3 and dim in [1, 2]
 
         if dim == 1:
-            return sequence[:, -1:, :]
+            return sequence[:, -self.label_length :, :]
         elif dim == 2:
-            return sequence[:, :, -1:]
+            return sequence[:, :, -self.label_length :]
 
     def filter_sentence(self, sentence: tensor) -> tensor:
-        return sentence[-1:]
+        return sentence[-self.label_length :]
 
     def _ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
         """
-            again we expect an input of length 99, so index 98 is the only one not ignored
+            again we expect an input of length 99, so e.g. if the label has length 2,
+            index 97 and 98 are the only ones not ignored
         """
-        return index != 98
+        return index not in range(99 - self.label_length, 99)
 
 
-class DataMNIST01(DataMNISTTwoDigitBase):
+class DataMNIST01(DataMNISTBase):
     def __init__(self, shard: int, **kwargs):
-        super().__init__(shard, digits=[0, 1], **kwargs)
+        super().__init__(shard, digits=[0, 1], scanlines=[0, 1], **kwargs)
 
 
-class DataMNIST36(DataMNISTTwoDigitBase):
+class DataMNIST36(DataMNISTBase):
     def __init__(self, shard: int, **kwargs):
-        super().__init__(shard, digits=[3, 6], **kwargs)
+        super().__init__(shard, digits=[3, 6], scanlines=[0, 1], **kwargs)
+
+
+class DataMNIST(DataMNISTBase):
+    def __init__(self, shard: int, **kwargs):
+        super().__init__(shard, digits=[0, 1, 2, 3, 4, 5, 6, 7, 8], scanlines=[0, 1, 2], **kwargs)
+
+
+# GENERATIVE
 
 
 class DataMNIST01_Gen(DataMNISTBase):
@@ -165,7 +191,7 @@ class DataMNIST01_Gen(DataMNISTBase):
     def __init__(self, shard: int, **kwargs):
         super().__init__(shard, digits=[0, 1], scanlines=[0, 1], **kwargs)
 
-    def next_batch(self) -> Batch:
+    def next_batch(self, _) -> Batch:
         # extract random batch of sentences
         sentences = []
 
@@ -194,79 +220,4 @@ class DataMNIST01_Gen(DataMNISTBase):
         return self._sentences_to_batch(sentences, targets=sentences)
 
     def to_human(self, target: tensor, offset: int = 0) -> str:
-        return super().to_human(target)
-
-
-class DataMNIST(DataMNISTBase):
-    """
-        classify the first eight MNIST digits on a 10x10 flattened input binary image of 0s and 1s
-        The last two pixels (each two bits wide) of the target contains the label.
-    """
-
-    def __init__(self, shard: int, **kwargs):
-        super().__init__(shard, digits=[0, 1, 4, 8], scanlines=[0, 1], **kwargs)
-
-    LABELS = [
-        [[1, 0, 0]],  # 0
-        [[0, 1, 0]],  # 1
-        [[0, 1, 1]],  # 2
-        [[0, 0, 1]],  # 3
-        [[0, 0, 0]],  # 4
-        [[1, 0, 1]],  # 5
-        [[1, 1, 1]],  # 6
-        [[1, 1, 0]],  # 7
-    ]
-
-    # last two pixels has to contain the label
-    TARGETS = [
-        torch.cat((torch.zeros(99, 3), torch.tensor(label).float())).int().tolist()
-        for label in LABELS
-    ]
-
-    def next_batch(self) -> Batch:
-        # extract random batch of sentences
-        sentences = []
-        targets = []
-
-        # we try to keep things balanced; so we fill them up as evenly randomly as possible
-        while True:
-            for digit_idx in torch.randperm(len(self.digits), generator=self.rng):
-                digit = self.digits[digit_idx]
-                data = self._data[digit]
-                idx = torch.randint(0, len(data), (1,), generator=self.rng).item()
-                sentences.append(data[idx])
-                targets.append(DataMNIST.TARGETS[digit])
-
-                # turn into batch
-                if len(sentences) == self.batch_size:
-                    return self._sentences_to_batch(sentences, targets)
-
-    def to_human(self, target: tensor, offset: int = 0) -> str:
-        if offset == 0 and not target.tolist() in DataMNIST.TARGETS:
-            return super().to_human(target)
-        else:
-            label = target[-1:].tolist()
-            return colorful.bold(
-                "?" if not label in DataMNIST.LABELS else str(DataMNIST.LABELS.index(label))
-            )
-
-    def filter(self, sequence: tensor, dim: int) -> tensor:
-        """
-            we expect these to be offset by 1 from a proper output of length 100, i.e. only of length 99
-            we only care about the last two pixel
-        """
-        assert sequence.dim() == 3 and dim in [1, 2]
-
-        if dim == 1:
-            return sequence[:, -1:, :]
-        elif dim == 2:
-            return sequence[:, :, -1:]
-
-    def filter_sentence(self, sentence: tensor) -> tensor:
-        return sentence[-1:]
-
-    def _ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
-        """
-            again we expect an input of length 99, so index 97 and 98 are the only ones not ignored
-        """
-        return index not in [98]
+        return super()._print_as_images(target)

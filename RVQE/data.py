@@ -3,26 +3,35 @@ import torch
 from torch import tensor
 
 import itertools
+import math
 
 
 Bitword = NewType("Bitword", List[int])  # e.g. [0, 1, 1]
-Batch = NewType("Batch", Tuple[tensor, tensor])
+Batch = NewType("Batch", Tuple[torch.LongTensor, torch.LongTensor])
 
 
-def zip_with_offset(a: tensor, b: tensor, offset: int = 1):
+def zip_with_offset(a: torch.Tensor, b: torch.Tensor, offset: int = 1):
     """
         s -> (a0,b1), (a1,b2), (a2, b3), ...
     """
     return zip(a, b[offset:])
 
 
-def bitword_to_int(lst: Union[Bitword, tensor]) -> int:
+def pad_and_chunk(a: Bitword, size: int) -> List[Bitword]:
+    """
+        [1, 1, 0, 1, 1], 4 -> [[0, 0, 0, 1], [1, 0, 1, 1]]
+    """
+    a = [0] * (math.ceil(len(a) / size) * size - len(a)) + a
+    return [a[i : i + size] for i in range(0, len(a), size)]
+
+
+def bitword_to_int(lst: Union[Bitword, torch.LongTensor]) -> int:
     if not isinstance(lst, list):
         lst = lst.tolist()
     return int("".join(str(n) for n in lst), 2)
 
 
-def bitword_to_onehot(lst: Union[Bitword, tensor], width: int) -> tensor:
+def bitword_to_onehot(lst: Union[Bitword, torch.LongTensor], width: int) -> torch.LongTensor:
     ret = torch.zeros(2 ** width)
     idx = bitword_to_int(lst)
     ret[idx] = 1.0
@@ -33,11 +42,13 @@ def int_to_bitword_str(label: int, width: int) -> str:
     return bin(label)[2:].rjust(width, "0")
 
 
-def int_to_bitword(label: int, width: int) -> Bitword:
+def int_to_bitword(label: int, width: Optional[int] = None) -> Bitword:
+    if width is None:
+        width = math.ceil(math.log2(label)) if label != 0 else 1
     return [int(c) for c in int_to_bitword_str(label, width)]
 
 
-def bitword_to_str(lst: Union[Bitword, tensor]) -> str:
+def bitword_to_str(lst: Union[Bitword, torch.LongTensor]) -> str:
     return int_to_bitword_str(bitword_to_int(lst), len(lst))
 
 
@@ -52,7 +63,7 @@ def bitword_to_char(bw: Bitword, characters: str) -> Bitword:
 
 
 # character error rate
-def character_error_rate(sequence: tensor, target: tensor) -> float:
+def character_error_rate(sequence: torch.LongTensor, target: torch.LongTensor) -> float:
     """
         we assume that sequence and target align 1:1
     """
@@ -61,7 +72,7 @@ def character_error_rate(sequence: tensor, target: tensor) -> float:
 
 
 # target preprocessing helper functions
-def targets_for_loss(sentences: tensor):
+def targets_for_loss(sentences: torch.LongTensor):
     """
         batch is B x L x W or just L x W
         B - batch
@@ -75,7 +86,7 @@ def targets_for_loss(sentences: tensor):
     return tensor([[bitword_to_int(word) for word in sentence] for sentence in sentences])
 
 
-def skip_first(targets: tensor) -> tensor:
+def skip_first(targets: torch.LongTensor) -> torch.LongTensor:
     """
         we never measure the first one, so skip that
         we assume B x L x W
@@ -102,8 +113,10 @@ class DataFactory(ABC):
         self._index = self.shard
         # local rng; derives seed from seed set in environment
         self.rng = torch.Generator().manual_seed(torch.randint(10 ** 10, (1,)).item() + shard)
+        # by default, the dataset does not override the batch size
+        self.overrides_batch_size = False
 
-    def next_batch(self) -> Batch:
+    def next_batch(self, step: int) -> Batch:
         # extract batch and advance pointer
         batch = self._batches[self._index]
         self._index += self.num_shards
@@ -139,17 +152,17 @@ class DataFactory(ABC):
         pass
 
     @abstractmethod
-    def to_human(self, target: tensor, offset: int) -> str:
+    def to_human(self, target: torch.LongTensor, offset: int) -> str:
         """
             translate sentence to a nice human-readable form
             indenting by offset characters
         """
         pass
 
-    def filter(self, sequence: tensor, dim: int) -> tensor:
+    def filter(self, sequence: torch.LongTensor, dim: int) -> torch.LongTensor:
         return sequence
 
-    def filter_sentence(self, sentence: tensor) -> tensor:
+    def filter_sentence(self, sentence: torch.LongTensor) -> torch.LongTensor:
         return sentence
 
     def _ignore_output_at_step(self, index: int, target: Union[torch.LongTensor, Bitword]) -> bool:

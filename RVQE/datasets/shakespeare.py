@@ -63,7 +63,7 @@ class DataShakespeare(DataFactory):
     def input_width(self) -> tensor:
         return 5
 
-    def next_batch(self) -> Batch:
+    def next_batch(self, _) -> Batch:
         # extract random batch of sentences
         sentences = []
         while len(sentences) < self.batch_size:

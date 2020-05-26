@@ -286,7 +286,7 @@ def train(shard: int, args):
             # advance by one training batch
             loss = None
             min_postsel_prob = None
-            sentences, targets = dataset.next_batch()
+            sentences, targets = dataset.next_batch(epoch)
 
             def loss_closure():
                 nonlocal loss  # write to loss outside closure
@@ -346,9 +346,10 @@ def train(shard: int, args):
                         min_postsel_prob = torch.stack(min_postsel_prob).min()
                         validation_loss /= args.num_shards
 
-                        assert (
-                            len(measured_sequences) == args.num_shards * args.batch_size
-                        ), "gather failed somehow"
+                        if not dataset.overrides_batch_size:
+                            assert (
+                                len(measured_sequences) == args.num_shards * args.batch_size
+                            ), "gather failed somehow"
 
                         # display and log a random subset of strings to show
                         logtext = ""

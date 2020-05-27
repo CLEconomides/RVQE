@@ -47,7 +47,8 @@ class DataMNISTBase(DataFactory):
             }
             for stage, stage_fn in [
                 [TrainingStage.TRAIN, "train"],
-                [TrainingStage.VALIDATE, "test"],
+                [TrainingStage.VALIDATE, "validate"],
+                [TrainingStage.TEST, "test"],
             ]
         }
 

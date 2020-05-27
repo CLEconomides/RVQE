@@ -318,7 +318,7 @@ def train(shard: int, args):
             if epoch % 10 == 0 or epoch == args.epochs - 1:
                 with torch.no_grad():
                     sentences, targets = dataset.next_batch(epoch, data.TrainingStage.VALIDATE)
-                    
+
                     # run entire batch through the network without postselecting measurements
                     measured_probs, measured_sequences, min_postsel_prob = rvqe(
                         sentences, targets, postselect_measurement=dataset.ignore_output_at_step

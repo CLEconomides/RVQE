@@ -38,7 +38,7 @@ for sd in "${seeds[@]}"; do
         --tag experiment-$TAG \
         --seed $sd \
         --num-shards 2 \
-        --epochs 5000 \
+        --epochs 1000 \
         train \
         --dataset mnist \
         --workspace 8 \

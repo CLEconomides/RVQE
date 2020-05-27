@@ -82,8 +82,8 @@ class DataMNISTBase(DataFactory):
         targets = []
 
         # we switch back and forth between centroid and general samples
-        ANNEALING_PERIOD = 250
-        frac_centroids = math.cos(10 * step / (2 * math.pi) / ANNEALING_PERIOD) ** 4
+        ANNEALING_PERIOD = 100 
+        frac_centroids = 0  # math.cos(10 * step / (2 * math.pi) / ANNEALING_PERIOD) ** 4
         centroid_samples = round(self.batch_size * frac_centroids)
         normal_samples = self.batch_size - centroid_samples
 

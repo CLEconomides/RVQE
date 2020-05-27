@@ -102,13 +102,8 @@ class DistributedTrainingEnvironment:
         return data
 
     def gather(self, data: torch.Tensor) -> List[torch.Tensor]:
-        gather_list = None
-        if self.shard == 0:
-            gather_list = []
-            for _ in range(self.world_size):
-                gather_list.append(torch.zeros_like(data))
-
-        torch.distributed.gather(data, gather_list, 0)
+        gather_list = [torch.ones_like(data) for _ in range(self.world_size)]
+        torch.distributed.all_gather(gather_list, data)  # gather has a bug, so use all_gather
         return gather_list
 
     @property
@@ -290,7 +285,6 @@ def train(shard: int, args):
 
             def loss_closure():
                 nonlocal loss  # write to loss outside closure
-                nonlocal targets
                 nonlocal min_postsel_prob
 
                 optimizer.zero_grad()

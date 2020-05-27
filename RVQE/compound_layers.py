@@ -141,7 +141,7 @@ def bitword_tensor(width: int) -> torch.LongTensor:
 import functools
 
 
-@functools.lru_cache(maxsize=10)
+# @functools.lru_cache(maxsize=10)
 def subset_index_tensor(width: int, degree: int) -> torch.BoolTensor:
     """
         returns a tensor in which every row is a list of boolean flags that indicate

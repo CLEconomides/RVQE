@@ -252,6 +252,9 @@ def test_rvqe():
 
 
 def test_rvqe_batching(capsys):
+    # batch size = 3
+    # sequence length = 5
+    # width = 1
     sentences = tensor(
         [[[1], [0], [1], [1], [1]], [[0], [0], [0], [1], [1]], [[1], [1], [0], [0], [1]]]
     )

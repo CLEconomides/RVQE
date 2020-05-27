@@ -42,9 +42,7 @@ def int_to_bitword_str(label: int, width: int) -> str:
     return bin(label)[2:].rjust(width, "0")
 
 
-def int_to_bitword(label: int, width: Optional[int] = None) -> Bitword:
-    if width is None:
-        width = math.ceil(math.log2(label)) if label != 0 else 1
+def int_to_bitword(label: int, width: int) -> Bitword:
     return [int(c) for c in int_to_bitword_str(label, width)]
 
 

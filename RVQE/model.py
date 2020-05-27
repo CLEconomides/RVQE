@@ -194,16 +194,19 @@ class RVQE(nn.Module):
             probs.append(p)
 
             # measure or postselect output
-            output_distribution = torch.distributions.Categorical(probs=p)
+            measure = []
             ps_mask = postselect_measurement(i, trgt)
-            sampled_trgt = tensor(
-                [
-                    int_to_bitword(sample, width=len(self.cell.inout))
-                    for sample in output_distribution.sample()
-                ]
-            )
+            for sample_idx, ps_sample in enumerate(ps_mask):
+                if ps_sample:
+                    # we postselect this sample within the batch
+                    measure.append(trgt[sample_idx])
+                else:
+                    # randomly measure
+                    output_distribution = torch.distributions.Categorical(probs=p[sample_idx])
+                    sample = output_distribution.sample()
+                    measure.append(tensor(int_to_bitword(sample, width=len(self.cell.inout))))
+            measure = torch.stack(measure)
 
-            measure = torch.where(ps_mask.unsqueeze(1).expand_as(trgt), trgt, sampled_trgt)
             kob = thread_inputs_over_batch(
                 kob, lambda m: PostselectManyLayer(self.cell.inout, m), measure
             )

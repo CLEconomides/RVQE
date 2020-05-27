@@ -75,7 +75,7 @@ class DataShakespeare(DataFactory):
         # turn into batch
         return self._sentences_to_batch(sentences, targets=sentences)
 
-    def to_human(self, target: tensor, offset: int = 0) -> str:
+    def to_human(self, target: torch.LongTensor, offset: int = 0) -> str:
         return " " * offset + "".join(
             [DataShakespeare.DISPLAY_CHARACTERS[bitword_to_int(c)] for c in target]
         )

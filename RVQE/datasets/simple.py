@@ -30,7 +30,7 @@ class DataSimpleSequences(DataFactory):
     def input_width(self) -> tensor:
         return 3
 
-    def to_human(self, target: tensor, offset: int = 0) -> str:
+    def to_human(self, target: torch.LongTensor, offset: int = 0) -> str:
         return "  " * offset + " ".join([str(bitword_to_int(word)) for word in target])
 
 
@@ -73,7 +73,7 @@ class DataSimpleQuotes(DataFactory):
     def input_width(self) -> tensor:
         return 5
 
-    def to_human(self, target: tensor, offset: int = 0) -> str:
+    def to_human(self, target: torch.LongTensor, offset: int = 0) -> str:
         return " " * offset + "".join(
             [DataSimpleQuotes.DISPLAY_CHARACTERS[bitword_to_int(c)] for c in target]
         )

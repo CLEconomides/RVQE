@@ -20,6 +20,14 @@ def count_parameters(model: nn.Module):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
+def thread_inputs_over_batch(batch: KetBatch, op, inputs: torch.LongTensor) -> KetBatch:
+    assert is_batch(batch) and inputs.dim() == 2, "cannot thread inputs over batch"
+    out = []
+    for i, inpt in enumerate(inputs):
+        out.append(op(inpt).forward(batch[i]))
+    return mark_batch(torch.stack(out))
+
+
 class RVQECell(nn.Module):
     def __init__(
         self,
@@ -134,9 +142,7 @@ class RVQECell(nn.Module):
 
     def bitflip_batch(self, batch: KetBatch, inputs: torch.LongTensor) -> KetBatch:
         # reset input one batch element at a time
-        for i, inpt in enumerate(inputs):
-            batch[i] = self._bitflip_for(inpt).forward(batch[i])
-        return batch
+        return thread_inputs_over_batch(batch, self._bitflip_for, inputs)
 
     def _bitflip_for(self, input: Bitword) -> BitFlipLayer:
         return BitFlipLayer([lane for i, lane in enumerate(self.inout) if input[i] == 1])
@@ -177,8 +183,7 @@ class RVQE(nn.Module):
         inputs = inputs.transpose(0, 1)
         targets = targets.transpose(0, 1)
 
-        kob = ket0(self.cell.num_qubits)
-        kob = ket_to_batch(ket0(self.cell.num_qubits), copies=BATCH)
+        kob = ket_to_batch(ket0(self.cell.num_qubits), copies=BATCH, share_memory=False)
 
         probs = []
         measured_seq = []
@@ -199,8 +204,12 @@ class RVQE(nn.Module):
             )
 
             measure = torch.where(ps_mask.unsqueeze(1).expand_as(trgt), trgt, sampled_trgt)
-            kob = PostselectManyLayer(self.cell.inout, measure).forward(kob)
-            postsel_prob = p[:, [bitword_to_int(m) for m in measure]]
+            kob = thread_inputs_over_batch(
+                kob, lambda m: PostselectManyLayer(self.cell.inout, m), measure
+            )
+            postsel_prob = tensor(
+                [p[i, ii] for i, ii in enumerate(bitword_to_int(m) for m in measure)]
+            )
 
             if any(ps_mask):
                 min_postsel_prob = min(min_postsel_prob, postsel_prob[ps_mask].min())

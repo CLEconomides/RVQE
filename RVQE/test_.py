@@ -6,11 +6,11 @@ from .quantum import *
 # QUANTUM
 
 
-def approx_equal(a: tensor, b: tensor) -> bool:
+def approx_equal(a: torch.Tensor, b: torch.Tensor) -> bool:
     return (a.reshape(-1) - b.reshape(-1)).norm() < 1e-4
 
 
-def equal(a: tensor, b: tensor) -> bool:
+def equal(a: torch.Tensor, b: torch.Tensor) -> bool:
     return torch.all(a.reshape(-1) == b.reshape(-1)).item()
 
 
@@ -212,7 +212,7 @@ from .model import *
 import sys
 
 
-def test_rvqe_cell(capsys):
+def test_rvqe_cell():
     assert (
         RVQECell(workspace_size=4, input_size=1, stages=1, order=2, fast=False).num_qubits
         == 4 + 1 + 2
@@ -249,6 +249,33 @@ def test_rvqe():
         assert min_ps_prob == 1.0
         assert probs.shape == torch.Size([3, 2, 4])  # BATCH x CLASS x LENGTH
         assert measured_seq.shape == torch.Size([3, 4, 1])  # BATCH x LENGTH x Bitvector Size
+
+
+def test_rvqe_batching(capsys):
+    sentences = tensor(
+        [[[1], [0], [1], [1], [1]], [[0], [0], [0], [1], [1]], [[1], [1], [0], [0], [1]]]
+    )
+    targets = tensor(
+        [[[1], [0], [0], [0], [0]], [[1], [1], [0], [0], [0]], [[1], [1], [1], [0], [0]]]
+    )
+    for fast in [True, False]:
+        # in-built batch
+        rvqe = RVQE(workspace_size=2, input_size=1, stages=1, order=2, fast=fast)
+        probs_batch, measured_seq_batch, _ = rvqe(sentences, targets, postselect_measurement=True)
+
+        # manual batch
+        probs = []
+        measured_seq = []
+        for sentence, target in zip(sentences, targets):
+            p, m, _ = rvqe(sentence, target, postselect_measurement=True)
+            probs.append(p)
+            measured_seq.append(m)
+        probs_manual = torch.stack(probs)
+        measured_seq_manual = torch.stack(measured_seq)
+
+        # compare
+        assert equal(probs_batch, probs_manual)
+        assert equal(measured_seq_batch, measured_seq_manual)
 
 
 # DATA

@@ -129,7 +129,7 @@ class QuantumNeuronLayer(CompoundLayer):
         return f"workspace={self.workspace}, outlane={self.outlane}, ancillas={self.ancillas} (order={self.order}, degree={self.degree}, bias={self.bias})"
 
 
-def bitword_tensor(width: int) -> tensor:
+def bitword_tensor(width: int) -> torch.LongTensor:
     """
         returns a tensor in which every row is the binary representation of the row index
     """
@@ -142,7 +142,7 @@ import functools
 
 
 @functools.lru_cache(maxsize=10)
-def subset_index_tensor(width: int, degree: int) -> tensor:
+def subset_index_tensor(width: int, degree: int) -> torch.BoolTensor:
     """
         returns a tensor in which every row is a list of boolean flags that indicate
         whether the row, written in binary, has all those bits set to True that
@@ -150,7 +150,6 @@ def subset_index_tensor(width: int, degree: int) -> tensor:
     """
     bwt = bitword_tensor(width)
     setidcs = [list(idcs) for idcs in powerset(range(width), 1, degree + 1)]
-
     return tensor([[row[idcs].all() for idcs in setidcs] for row in bwt])
 
 

@@ -236,7 +236,7 @@ def dot(a: KetOrBatch, b: KetOrBatch) -> KetOrBatch:
     return mark_batch_like(a, torch.einsum(idcs_einsum, a, b))
 
 
-def ctrlMat(op: tensor, num_control_lanes: int) -> tensor:
+def ctrlMat(op: torch.Tensor, num_control_lanes: int) -> tensor:
     if num_control_lanes == 0:
         return op
     n = num_operator_qubits(op)

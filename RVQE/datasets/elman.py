@@ -53,8 +53,8 @@ class DataElmanXOR(DataFactory):
         # turn into batch
         return self._sentences_to_batch(sentences, targets)
 
-    def to_human(self, target: tensor, offset: int = 0) -> str:
-        def to_str(item: tensor) -> str:
+    def to_human(self, target: torch.LongTensor, offset: int = 0) -> str:
+        def to_str(item: torch.LongTensor) -> str:
             item = bitword_to_int(item)
             return str(item) if item != 2 else "·"
 
@@ -75,7 +75,7 @@ class DataElmanXOR(DataFactory):
                 [style_triple(triple.tolist()) for triple in torch.split(target[2:], 3)]
             )
 
-    def filter(self, sequence: tensor, dim: int) -> tensor:
+    def filter(self, sequence: torch.LongTensor, dim: int) -> tensor:
         """
             we expect these to be offset by 1 from a proper output, i.e.
             01 110 000 011
@@ -89,7 +89,7 @@ class DataElmanXOR(DataFactory):
         elif dim == 2:
             return sequence[:, :, 1::3]
 
-    def filter_sentence(self, sentence: tensor) -> tensor:
+    def filter_sentence(self, sentence: torch.LongTensor) -> tensor:
         return sentence[1::3]
 
     def _ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
@@ -180,7 +180,7 @@ class DataElmanLetter(DataFactory):
         7: " ·",  # extra marker for target when we expect a consonant
     }
 
-    def to_human(self, target: tensor, offset: int = 0) -> str:
+    def to_human(self, target: torch.LongTensor, offset: int = 0) -> str:
         target = [bitword_to_int(t) for t in target]
         # start with offset number of blanks
         out = " " * offset

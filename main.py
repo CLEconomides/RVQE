@@ -97,11 +97,11 @@ class DistributedTrainingEnvironment:
     def synchronize(self):
         return torch.distributed.barrier()
 
-    def reduce(self, data: tensor, reduce_op: ReduceOp) -> tensor:
+    def reduce(self, data: torch.Tensor, reduce_op: ReduceOp) -> torch.Tensor:
         torch.distributed.reduce(data, 0, reduce_op)
         return data
 
-    def gather(self, data: tensor) -> List[tensor]:
+    def gather(self, data: torch.Tensor) -> List[torch.Tensor]:
         gather_list = None
         if self.shard == 0:
             gather_list = []
@@ -353,9 +353,7 @@ def train(shard: int, args):
 
                         # display and log a random subset of strings to show
                         logtext = ""
-                        for i in torch.randperm(len(sentences))[
-                            : min(args.num_validation_samples, args.num_shards)
-                        ]:
+                        for i in torch.randperm(len(sentences))[: args.num_validation_samples]:
                             if (targets[i] != sentences[i]).any():
                                 text = f"inpt = { dataset.to_human(sentences[i]) }"
                                 print(colorful.faint(text))

@@ -140,7 +140,7 @@ class DataMNISTBase(DataFactory):
             else:
                 return colorful.bold("?")
 
-    def filter(self, sequence: tensor, dim: int) -> tensor:
+    def filter(self, sequence: torch.LongTensor, dim: int) -> tensor:
         """
             we expect these to be offset by 1 from a proper output of length 100, i.e. only of length 99
             we only care about the last self.label_length pixels
@@ -152,7 +152,7 @@ class DataMNISTBase(DataFactory):
         elif dim == 2:
             return sequence[:, :, -self.label_length :]
 
-    def filter_sentence(self, sentence: tensor) -> tensor:
+    def filter_sentence(self, sentence: torch.LongTensor) -> tensor:
         return sentence[-self.label_length :]
 
     def _ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
@@ -219,5 +219,5 @@ class DataMNIST01_Gen(DataMNISTBase):
         # turn into batch
         return self._sentences_to_batch(sentences, targets=sentences)
 
-    def to_human(self, target: tensor, offset: int = 0) -> str:
+    def to_human(self, target: torch.LongTensor, offset: int = 0) -> str:
         return super()._print_as_images(target)

@@ -32,7 +32,7 @@ class DataElmanXOR(DataFactory):
     def input_width(self) -> tensor:
         return 2
 
-    def next_batch(self, _) -> Batch:
+    def next_batch(self, _, __) -> Batch:
         # extract random batch of xor sequences like 011 101 110 000 ...
         sentences = []
         targets = []
@@ -149,7 +149,7 @@ class DataElmanLetter(DataFactory):
     def input_width(self) -> tensor:
         return 3
 
-    def next_batch(self, _) -> Batch:
+    def next_batch(self, _, __) -> Batch:
         sentences = []
         targets = []
         while len(sentences) < self.batch_size:

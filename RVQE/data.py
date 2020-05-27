@@ -99,6 +99,13 @@ def skip_first(targets: torch.LongTensor) -> torch.LongTensor:
 
 # data loader for distributed environment
 from abc import ABC, abstractmethod
+import enum
+
+
+class TrainingStage(enum.Enum):
+    TRAIN = 1
+    VALIDATE = 2
+    TEST = 3
 
 
 class DataFactory(ABC):
@@ -116,7 +123,7 @@ class DataFactory(ABC):
         # by default, the dataset does not override the batch size
         self.overrides_batch_size = False
 
-    def next_batch(self, step: int) -> Batch:
+    def next_batch(self, step: int, stage: TrainingStage) -> Batch:
         # extract batch and advance pointer
         batch = self._batches[self._index]
         self._index += self.num_shards

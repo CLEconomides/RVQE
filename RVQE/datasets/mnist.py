@@ -36,11 +36,19 @@ class DataMNISTBase(DataFactory):
 
         # import as list of lists of bitwords
         self._data = {
-            digit: [
-                [BIT_LUT[val.item()] for val in row]
-                for row in DataMNISTBase._import_csv(f"res/mnist-simple-{digit}-train.csv.gz")
+            stage: {
+                digit: [
+                    [BIT_LUT[val.item()] for val in row]
+                    for row in DataMNISTBase._import_csv(
+                        f"res/mnist-simple-{digit}-{stage_fn}.csv.gz"
+                    )
+                ]
+                for digit in digits
+            }
+            for stage, stage_fn in [
+                [TrainingStage.TRAIN, "train"],
+                [TrainingStage.VALIDATE, "test"],
             ]
-            for digit in digits
         }
 
         # import centroids
@@ -76,13 +84,13 @@ class DataMNISTBase(DataFactory):
     def input_width(self) -> tensor:
         return len(self.scanlines)
 
-    def next_batch(self, step: int) -> Batch:
+    def next_batch(self, step: int, stage: TrainingStage) -> Batch:
         # extract random batch of sentences
         sentences = []
         targets = []
 
         # we switch back and forth between centroid and general samples
-        ANNEALING_PERIOD = 100 
+        ANNEALING_PERIOD = 100
         frac_centroids = 0  # math.cos(10 * step / (2 * math.pi) / ANNEALING_PERIOD) ** 4
         centroid_samples = round(self.batch_size * frac_centroids)
         normal_samples = self.batch_size - centroid_samples
@@ -90,7 +98,7 @@ class DataMNISTBase(DataFactory):
         # get normal samples
         for _ in range(normal_samples):
             for digit_idx, digit in enumerate(self.digits):
-                data = self._data[digit]
+                data = self._data[stage][digit]
                 data_idx = torch.randint(0, len(data), (1,), generator=self.rng).item()
                 sentences.append(data[data_idx])
                 targets.append(self.TARGETS[digit_idx])
@@ -191,13 +199,13 @@ class DataMNIST01_Gen(DataMNISTBase):
     def __init__(self, shard: int, **kwargs):
         super().__init__(shard, digits=[0, 1], scanlines=[0, 1], **kwargs)
 
-    def next_batch(self, _) -> Batch:
+    def next_batch(self, _, stage: TrainingStage) -> Batch:
         # extract random batch of sentences
         sentences = []
 
         # we try to keep it balanced between 0 and 1, even if batch size is 1, and multiple shards are used
-        dataA = self._data[0]
-        dataB = self._data[1]
+        dataA = self._data[stage][0]
+        dataB = self._data[stage][1]
         labelA = [0, 0]
         labelB = [0, 1]
         if self.shard % 2 == 1:

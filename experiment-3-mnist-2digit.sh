@@ -8,7 +8,7 @@ mkdir -p "$LOCKFILEFOLDER"
 
 DATASET=$1
 
-if [[ "$DATASET" != "mnist01" && "$DATASET" != "mnist36" && "$DATASET" != "mnist36-gen" ]] ; then
+if [[ "$DATASET" != "mnist01" && "$DATASET" != "mnist01-ds" && "$DATASET" != "mnist36" && "$DATASET" != "mnist36-ds" && "$DATASET" != "mnist01-gen" ]] ; then
     echo "invalid dataset $DATASET"
     exit 1
 fi

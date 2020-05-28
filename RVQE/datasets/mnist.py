@@ -17,7 +17,9 @@ class DataMNISTBase(DataFactory):
             ).values
         )
 
-    def __init__(self, shard: int, digits: List[int], scanlines: List[int], **kwargs):
+    def __init__(
+        self, shard: int, digits: List[int], scanlines: List[int], deskewed: bool, **kwargs
+    ):
         super().__init__(shard, **kwargs)
         self.overrides_batch_size = True
 
@@ -40,7 +42,7 @@ class DataMNISTBase(DataFactory):
                 digit: [
                     [BIT_LUT[val.item()] for val in row]
                     for row in DataMNISTBase._import_csv(
-                        f"res/mnist-simple-{digit}-{stage_fn}.csv.gz"
+                        f"res/mnist-simple-{digit}{'-deskewed-' if deskewed else '-'}{stage_fn}.csv.gz"
                     )
                 ]
                 for digit in digits
@@ -55,7 +57,11 @@ class DataMNISTBase(DataFactory):
         # import centroids
         self._data_centroids = {
             digit: [BIT_LUT[val.item()] for val in row]
-            for digit, row in enumerate(DataMNISTBase._import_csv("res/mnist-centroids.csv.gz"))
+            for digit, row in enumerate(
+                DataMNISTBase._import_csv(
+                    f"res/mnist-centroids{'-deskewed' if deskewed else ''}.csv.gz"
+                )
+            )
         }
 
         self.num_scanlines = len(scanlines)  # number of in/out qubits
@@ -174,17 +180,36 @@ class DataMNISTBase(DataFactory):
 
 class DataMNIST01(DataMNISTBase):
     def __init__(self, shard: int, **kwargs):
-        super().__init__(shard, digits=[0, 1], scanlines=[0, 1], **kwargs)
+        super().__init__(shard, digits=[0, 1], scanlines=[0, 1], deskewed=False, **kwargs)
 
 
 class DataMNIST36(DataMNISTBase):
     def __init__(self, shard: int, **kwargs):
-        super().__init__(shard, digits=[3, 6], scanlines=[0, 1], **kwargs)
+        super().__init__(shard, digits=[3, 6], scanlines=[0, 1], deskewed=False, **kwargs)
 
 
-class DataMNIST(DataMNISTBase):
+class DataMNIST8(DataMNISTBase):
     def __init__(self, shard: int, **kwargs):
-        super().__init__(shard, digits=[0, 1, 2, 3, 4, 5, 6, 7, 8], scanlines=[0, 1, 2], **kwargs)
+        super().__init__(
+            shard, digits=[0, 1, 2, 3, 4, 5, 6, 7, 8], scanlines=[0, 1, 2], deskewed=False, **kwargs
+        )
+
+
+class DataMNIST01ds(DataMNISTBase):
+    def __init__(self, shard: int, **kwargs):
+        super().__init__(shard, digits=[0, 1], scanlines=[0, 1], deskewed=False, **kwargs)
+
+
+class DataMNIST36ds(DataMNISTBase):
+    def __init__(self, shard: int, **kwargs):
+        super().__init__(shard, digits=[3, 6], scanlines=[0, 1], deskewed=False, **kwargs)
+
+
+class DataMNIST8ds(DataMNISTBase):
+    def __init__(self, shard: int, **kwargs):
+        super().__init__(
+            shard, digits=[0, 1, 2, 3, 4, 5, 6, 7, 8], scanlines=[0, 1, 2], deskewed=False, **kwargs
+        )
 
 
 # GENERATIVE

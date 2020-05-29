@@ -8,7 +8,7 @@ mkdir -p "$LOCKFILEFOLDER"
 
 DATASET=$1
 
-if [[ "$DATASET" != "mnist8" && "$DATASET" != "mnist8-ds" ]] ; then
+if [[ "$DATASET" != "mnist8" && "$DATASET" != "mnist8-ds" && "$DATASET" != "mnist8-ds-lrg" ]] ; then
     echo "invalid dataset $DATASET"
     exit 1
 fi
@@ -45,7 +45,7 @@ for sd in "${seeds[@]}"; do
         --tag experiment-$TAG \
         --seed $sd \
         --num-shards 2 \
-        --epochs 1000 \
+        --epochs 5000 \
         train \
         --dataset mnist \
         --workspace 10 \
@@ -53,7 +53,7 @@ for sd in "${seeds[@]}"; do
         --order 2 \
         --degree 3 \
         --optimizer adam \
-        --learning-rate 0.005 \
+        --learning-rate 0.0025 \
         --batch-size 50
     
     if  [[ $? -eq 0 ]] ; then

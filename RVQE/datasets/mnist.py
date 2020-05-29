@@ -197,18 +197,18 @@ class DataMNIST8(DataMNISTBase):
 
 class DataMNIST01ds(DataMNISTBase):
     def __init__(self, shard: int, **kwargs):
-        super().__init__(shard, digits=[0, 1], scanlines=[0, 1], deskewed=False, **kwargs)
+        super().__init__(shard, digits=[0, 1], scanlines=[0, 1], deskewed=True, **kwargs)
 
 
 class DataMNIST36ds(DataMNISTBase):
     def __init__(self, shard: int, **kwargs):
-        super().__init__(shard, digits=[3, 6], scanlines=[0, 1], deskewed=False, **kwargs)
+        super().__init__(shard, digits=[3, 6], scanlines=[0, 1], deskewed=True, **kwargs)
 
 
 class DataMNIST8ds(DataMNISTBase):
     def __init__(self, shard: int, **kwargs):
         super().__init__(
-            shard, digits=[0, 1, 2, 3, 4, 5, 6, 7, 8], scanlines=[0, 1, 2], deskewed=False, **kwargs
+            shard, digits=[0, 1, 2, 3, 4, 5, 6, 7], scanlines=[0, 1, 2], deskewed=True, **kwargs
         )
 
 

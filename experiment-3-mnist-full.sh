@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
-# mnist01
+# mnist 8 digits
 
 seeds=( 29203 39060 35605 88615 30218 62354 22195 23481 14629 58825 78763 74317 54341 59416 12173 57478 51841 36516 68534 69542 86216 50816 21675 77289 33313 13904 68515 49315 61697 89319 )
 
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
+
+DATASET=$1
+
+if [[ "$DATASET" != "mnist8" && "$DATASET" != "mnist8-ds" ]] ; then
+    echo "invalid dataset $DATASET"
+    exit 1
+fi
 
 trap "exit" INT
 sleep $[ ($RANDOM % 40) + 1 ]s
@@ -41,12 +48,12 @@ for sd in "${seeds[@]}"; do
         --epochs 1000 \
         train \
         --dataset mnist \
-        --workspace 8 \
+        --workspace 10 \
         --stages 2 \
         --order 2 \
-        --degree 2 \
+        --degree 3 \
         --optimizer adam \
-        --learning-rate 0.05 \
+        --learning-rate 0.005 \
         --batch-size 50
     
     if  [[ $? -eq 0 ]] ; then

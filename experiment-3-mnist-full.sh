@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # mnist 8 digits
 
-seeds=( 29203 39060 35605 88615 30218 62354 22195 23481 14629 58825 78763 74317 54341 59416 12173 57478 51841 36516 68534 69542 86216 50816 21675 77289 33313 13904 68515 49315 61697 89319 )
+seeds=( 23482 29328 23928 38282 24484 34382 28888 30114 )
 
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
@@ -44,7 +44,8 @@ for sd in "${seeds[@]}"; do
     OMP_NUM_THREADS=2 ./main.py \
         --tag experiment-$TAG \
         --seed $sd \
-        --num-shards 2 \
+        --port $sd \
+        --num-shards 4 \
         --epochs 5000 \
         train \
         --dataset $DATASET \
@@ -54,7 +55,7 @@ for sd in "${seeds[@]}"; do
         --degree 3 \
         --optimizer adam \
         --learning-rate 0.0025 \
-        --batch-size 50
+        --batch-size 10
     
     if  [[ $? -eq 0 ]] ; then
         touch "$DONEFILE"    

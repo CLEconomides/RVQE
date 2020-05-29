@@ -14,6 +14,9 @@ all_datasets = {
     "mnist01-ds": DataMNIST01ds,
     "mnist36-ds": DataMNIST36ds,
     "mnist8-ds": DataMNIST8ds,
+    "mnist01-ds-lrg": DataMNIST01ds_lrg,
+    "mnist36-ds-lrg": DataMNIST36ds_lrg,
+    "mnist8-ds-lrg": DataMNIST8ds_lrg,
     "mnist01-gen": DataMNIST01_Gen,
     "shakespeare": DataShakespeare,
 }

@@ -19,7 +19,7 @@ sleep $[ ($RANDOM % 40) + 1 ]s
 
 for sd in "${seeds[@]}"; do
 
-    TAG="mnist-full-$sd"
+    TAG="$DATASET-$sd"
 
     LOCKFILE="$LOCKFILEFOLDER/experiment-$TAG.lock"
     DONEFILE="$LOCKFILEFOLDER/experiment-$TAG.done"
@@ -47,7 +47,7 @@ for sd in "${seeds[@]}"; do
         --num-shards 2 \
         --epochs 5000 \
         train \
-        --dataset mnist \
+        --dataset $DATASET \
         --workspace 10 \
         --stages 2 \
         --order 2 \

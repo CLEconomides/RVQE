@@ -41,7 +41,7 @@ for dataset in "${datasets[@]}"; do
         --tag experiment-$TAG \
         --seed $sd \
         --port $sd \
-        --num-shards 4 \
+        --num-shards 2 \
         --epochs 5000 \
         train \
         --dataset $dataset \

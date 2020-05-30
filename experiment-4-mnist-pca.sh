@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # mnist 8 digits
 
-seeds=( 23482 29328 23928 38282 24484 34382 28888 30114 )
+seeds=( 23182 29128 23118 38212 24414 31382 28118 31114 )
 datasets=( "mnist-pca-r2-p2" "mnist-pca-r2-p5" "mnist-pca-r2-p8" "mnist-pca-r3-p2" "mnist-pca-r3-p5" "mnist-pca-r3-p8" "mnist-pca-r4-p2" "mnist-pca-r4-p5" "mnist-pca-r4-p8" )
 
 LOCKFILEFOLDER="./locks"
@@ -45,7 +45,7 @@ for dataset in "${datasets[@]}"; do
         --epochs 5000 \
         train \
         --dataset $dataset \
-        --workspace 8 \
+        --workspace 9 \
         --stages 2 \
         --order 2 \
         --degree 3 \

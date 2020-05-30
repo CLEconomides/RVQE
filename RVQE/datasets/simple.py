@@ -27,7 +27,7 @@ class DataSimpleSequences(DataFactory):
         return self._batches_data
 
     @property
-    def input_width(self) -> tensor:
+    def input_width(self) -> int:
         return 3
 
     def to_human(self, target: torch.LongTensor, offset: int = 0) -> str:
@@ -70,7 +70,7 @@ class DataSimpleQuotes(DataFactory):
         return self._batches_data
 
     @property
-    def input_width(self) -> tensor:
+    def input_width(self) -> int:
         return 5
 
     def to_human(self, target: torch.LongTensor, offset: int = 0) -> str:

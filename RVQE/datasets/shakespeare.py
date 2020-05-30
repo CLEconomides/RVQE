@@ -60,7 +60,7 @@ class DataShakespeare(DataFactory):
         raise NotImplementedError("next_batch overridden")
 
     @property
-    def input_width(self) -> tensor:
+    def input_width(self) -> int:
         return 5
 
     def next_batch(self, _, __) -> Batch:

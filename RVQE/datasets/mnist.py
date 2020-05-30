@@ -18,7 +18,13 @@ class DataMNISTBase(DataFactory):
         )
 
     def __init__(
-        self, shard: int, digits: List[int], scanlines: List[int], deskewed: bool, large: bool, **kwargs
+        self,
+        shard: int,
+        digits: List[int],
+        scanlines: List[int],
+        deskewed: bool,
+        large: bool,
+        **kwargs,
     ):
         super().__init__(shard, **kwargs)
         self.overrides_batch_size = True
@@ -28,6 +34,7 @@ class DataMNISTBase(DataFactory):
         self.digits = digits
 
         # a batch of size 10 means 10 examples for each digit here
+        self._old_batch_size = self.batch_size
         self.batch_size *= len(digits)
 
         assert all(s in range(3) for s in scanlines), "scanlines are 0, 1, or 2"
@@ -64,9 +71,7 @@ class DataMNISTBase(DataFactory):
         self._data_centroids = {
             digit: [BIT_LUT[val.item()] for val in row]
             for digit, row in enumerate(
-                DataMNISTBase._import_csv(
-                    f"res/mnist-centroids{SUBSET}.csv.gz"
-                )
+                DataMNISTBase._import_csv(f"res/mnist-centroids{SUBSET}.csv.gz")
             )
         }
 
@@ -75,7 +80,10 @@ class DataMNISTBase(DataFactory):
 
         self.num_scanlines = len(scanlines)  # number of in/out qubits
         self.LABELS = [
-            pad_and_chunk(int_to_bitword(i), self.num_scanlines) for i in range(len(digits))
+            pad_and_chunk(
+                int_to_bitword(i, width=math.ceil(math.log2(len(digits)))), self.num_scanlines
+            )
+            for i in range(len(digits))
         ]
         self.label_length = len(self.LABELS[0])  # over how many measurements is the label spread
 
@@ -97,8 +105,8 @@ class DataMNISTBase(DataFactory):
         raise NotImplementedError("next_batch overridden")
 
     @property
-    def input_width(self) -> tensor:
-        return len(self.scanlines)
+    def input_width(self) -> int:
+        return self.num_scanlines
 
     def next_batch(self, step: int, stage: TrainingStage) -> Batch:
         # extract random batch of sentences
@@ -108,8 +116,8 @@ class DataMNISTBase(DataFactory):
         # we switch back and forth between centroid and general samples
         ANNEALING_PERIOD = 100
         frac_centroids = 0  # math.cos(10 * step / (2 * math.pi) / ANNEALING_PERIOD) ** 4
-        centroid_samples = round(self.batch_size * frac_centroids)
-        normal_samples = self.batch_size - centroid_samples
+        centroid_samples = round(self._old_batch_size * frac_centroids)
+        normal_samples = self._old_batch_size - centroid_samples
 
         # get normal samples
         for _ in range(normal_samples):
@@ -130,7 +138,7 @@ class DataMNISTBase(DataFactory):
 
     def _print_as_images(self, target: torch.LongTensor, offset: int = 0) -> str:
         # the predicted image is missing the first pixel
-        if len(target) == self.SEQ_LEN-1:
+        if len(target) == self.SEQ_LEN - 1:
             target = torch.cat((torch.zeros(1, self.num_scanlines, dtype=int), target))
 
         # split scanlines
@@ -164,7 +172,7 @@ class DataMNISTBase(DataFactory):
             else:
                 return colorful.bold("?")
 
-    def filter(self, sequence: torch.LongTensor, dim: int) -> tensor:
+    def filter(self, sequence: torch.LongTensor, dim: int) -> torch.LongTensor:
         """
             we expect these to be offset by 1 from a proper output of length 100, i.e. only of length 99
             we only care about the last self.label_length pixels
@@ -176,7 +184,7 @@ class DataMNISTBase(DataFactory):
         elif dim == 2:
             return sequence[:, :, -self.label_length :]
 
-    def filter_sentence(self, sentence: torch.LongTensor) -> tensor:
+    def filter_sentence(self, sentence: torch.LongTensor) -> torch.LongTensor:
         return sentence[-self.label_length :]
 
     def _ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
@@ -189,52 +197,79 @@ class DataMNISTBase(DataFactory):
 
 class DataMNIST01(DataMNISTBase):
     def __init__(self, shard: int, **kwargs):
-        super().__init__(shard, digits=[0, 1], scanlines=[0, 1], deskewed=False, large=False, **kwargs)
+        super().__init__(
+            shard, digits=[0, 1], scanlines=[0, 1], deskewed=False, large=False, **kwargs
+        )
 
 
 class DataMNIST36(DataMNISTBase):
     def __init__(self, shard: int, **kwargs):
-        super().__init__(shard, digits=[3, 6], scanlines=[0, 1], deskewed=False, large=False, **kwargs)
+        super().__init__(
+            shard, digits=[3, 6], scanlines=[0, 1], deskewed=False, large=False, **kwargs
+        )
 
 
 class DataMNIST8(DataMNISTBase):
     def __init__(self, shard: int, **kwargs):
         super().__init__(
-            shard, digits=[0, 1, 2, 3, 4, 5, 6, 7, 8], scanlines=[0, 1, 2], deskewed=False, large=False, **kwargs
+            shard,
+            digits=[0, 1, 2, 3, 4, 5, 6, 7, 8],
+            scanlines=[0, 1, 2],
+            deskewed=False,
+            large=False,
+            **kwargs,
         )
 
 
 class DataMNIST01ds(DataMNISTBase):
     def __init__(self, shard: int, **kwargs):
-        super().__init__(shard, digits=[0, 1], scanlines=[0, 1], deskewed=True, large=False, **kwargs)
+        super().__init__(
+            shard, digits=[0, 1], scanlines=[0, 1], deskewed=True, large=False, **kwargs
+        )
 
 
 class DataMNIST36ds(DataMNISTBase):
     def __init__(self, shard: int, **kwargs):
-        super().__init__(shard, digits=[3, 6], scanlines=[0, 1], deskewed=True, large=False, **kwargs)
+        super().__init__(
+            shard, digits=[3, 6], scanlines=[0, 1], deskewed=True, large=False, **kwargs
+        )
 
 
 class DataMNIST8ds(DataMNISTBase):
     def __init__(self, shard: int, **kwargs):
         super().__init__(
-            shard, digits=[0, 1, 2, 3, 4, 5, 6, 7], scanlines=[0, 1, 2], deskewed=True, large=False, **kwargs
+            shard,
+            digits=[0, 1, 2, 3, 4, 5, 6, 7],
+            scanlines=[0, 1, 2],
+            deskewed=True,
+            large=False,
+            **kwargs,
         )
 
 
 class DataMNIST01ds_lrg(DataMNISTBase):
     def __init__(self, shard: int, **kwargs):
-        super().__init__(shard, digits=[0, 1], scanlines=[0, 1], deskewed=True, large=True, **kwargs)
+        super().__init__(
+            shard, digits=[0, 1], scanlines=[0, 1], deskewed=True, large=True, **kwargs
+        )
 
 
 class DataMNIST36ds_lrg(DataMNISTBase):
     def __init__(self, shard: int, **kwargs):
-        super().__init__(shard, digits=[3, 6], scanlines=[0, 1], deskewed=True, large=True, **kwargs)
+        super().__init__(
+            shard, digits=[3, 6], scanlines=[0, 1], deskewed=True, large=True, **kwargs
+        )
 
 
 class DataMNIST8ds_lrg(DataMNISTBase):
     def __init__(self, shard: int, **kwargs):
         super().__init__(
-            shard, digits=[0, 1, 2, 3, 4, 5, 6, 7], scanlines=[0, 1, 2], deskewed=True, large=True, **kwargs
+            shard,
+            digits=[0, 1, 2, 3, 4, 5, 6, 7],
+            scanlines=[0, 1, 2],
+            deskewed=True,
+            large=True,
+            **kwargs,
         )
 
 

@@ -29,7 +29,7 @@ class DataElmanXOR(DataFactory):
         raise NotImplementedError("next_batch overridden")
 
     @property
-    def input_width(self) -> tensor:
+    def input_width(self) -> int:
         return 2
 
     def next_batch(self, _, __) -> Batch:
@@ -75,7 +75,7 @@ class DataElmanXOR(DataFactory):
                 [style_triple(triple.tolist()) for triple in torch.split(target[2:], 3)]
             )
 
-    def filter(self, sequence: torch.LongTensor, dim: int) -> tensor:
+    def filter(self, sequence: torch.LongTensor, dim: int) -> torch.Tensor:
         """
             we expect these to be offset by 1 from a proper output, i.e.
             01 110 000 011
@@ -89,7 +89,7 @@ class DataElmanXOR(DataFactory):
         elif dim == 2:
             return sequence[:, :, 1::3]
 
-    def filter_sentence(self, sentence: torch.LongTensor) -> tensor:
+    def filter_sentence(self, sentence: torch.LongTensor) -> torch.Tensor:
         return sentence[1::3]
 
     def _ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
@@ -146,7 +146,7 @@ class DataElmanLetter(DataFactory):
         raise NotImplementedError("next_batch overridden")
 
     @property
-    def input_width(self) -> tensor:
+    def input_width(self) -> int:
         return 3
 
     def next_batch(self, _, __) -> Batch:

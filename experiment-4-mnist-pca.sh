@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # mnist 8 digits
 
-seeds=( 23182 29128 23118 38212 24414 31382 28118 31114 )
-datasets=( "mnist-pca-r2-p2" "mnist-pca-r2-p5" "mnist-pca-r2-p8" "mnist-pca-r3-p2" "mnist-pca-r3-p5" "mnist-pca-r3-p8" "mnist-pca-r4-p2" "mnist-pca-r4-p5" "mnist-pca-r4-p8" )
+seeds=( 28258 28259 28260 28261 28262 28263 )
+datasets=( "mnist-pca-r3-p8" )
 
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
@@ -15,7 +15,7 @@ sleep $[ ($RANDOM % 40) + 1 ]s
 for sd in "${seeds[@]}"; do
 for dataset in "${datasets[@]}"; do
 
-    TAG="$dataset-$sd"
+    TAG="fawcett-$dataset-$sd"
 
     LOCKFILE="$LOCKFILEFOLDER/experiment-$TAG.lock"
     DONEFILE="$LOCKFILEFOLDER/experiment-$TAG.done"
@@ -41,17 +41,17 @@ for dataset in "${datasets[@]}"; do
         --tag experiment-$TAG \
         --seed $sd \
         --port $sd \
-        --num-shards 2 \
-        --epochs 5000 \
+        --num-shards 4 \
+        --epochs 10000 \
         train \
         --dataset $dataset \
-        --workspace 9 \
+        --workspace 10 \
         --stages 2 \
         --order 2 \
         --degree 3 \
         --optimizer adam \
-        --learning-rate 0.0025 \
-        --batch-size 10
+        --learning-rate 0.005 \
+        --batch-size 16
     
     if  [[ $? -eq 0 ]] ; then
         touch "$DONEFILE"    

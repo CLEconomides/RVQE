@@ -190,6 +190,9 @@ def train(shard: int, args):
             epoch_start = store["epoch"]
             best_validation_loss = store["best_validation_loss"]
             best_character_error_rate = store["best_character_error_rate"]
+            # overrides
+            if args.override_learning_rate is not None:
+                original_args.learning_rate = args.override_learning_rate
         else:
             original_args = args
             epoch_start = 0
@@ -467,7 +470,10 @@ def command_train(args):
 
 
 def command_resume(args):
-    torch.multiprocessing.spawn(train, args=(args,), nprocs=args.num_shards, join=True)
+    if args.num_shards == 1:
+        train(0, args)
+    else:
+        torch.multiprocessing.spawn(train, args=(args,), nprocs=args.num_shards, join=True)
 
 
 if __name__ == "__main__":
@@ -615,6 +621,13 @@ if __name__ == "__main__":
     )
     parser_resume.set_defaults(func=command_resume)
     parser_resume.add_argument("filename", type=str, help="checkpoint filename")
+    parser_resume.add_argument(
+        "--override-learning-rate",
+        metavar="LR",
+        type=float,
+        default=None,
+        help="learning rate for optimizer",
+    )
 
     args = parser.parse_args()
     if not hasattr(args, "func"):

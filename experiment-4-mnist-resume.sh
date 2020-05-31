@@ -45,11 +45,12 @@ for checkpoint in "${checkpoints[@]}"; do
         --tag experiment-$TAG \
         --seed $sd \
         --port $PORT \
-        --num-shards 4 \
+        --num-shards 2 \
         --epochs 10000 \
         resume \
         `ls -t checkpoints/*$checkpoint* | head -1` \
-        --override-learning-rate 0.001
+        --override-learning-rate 0.001 \
+        --override-batch-size 50
 
     
     if  [[ $? -eq 0 ]] ; then

@@ -193,6 +193,8 @@ def train(shard: int, args):
             # overrides
             if args.override_learning_rate is not None:
                 original_args.learning_rate = args.override_learning_rate
+            if args.override_batch_size is not None:
+                original_args.batch_size = args.override_batch_size
         else:
             original_args = args
             epoch_start = 0
@@ -627,6 +629,13 @@ if __name__ == "__main__":
         type=float,
         default=None,
         help="learning rate for optimizer",
+    )
+    parser_resume.add_argument(
+        "--override-batch-size",
+        metavar="LR",
+        type=float,
+        default=None,
+        help="batch size",
     )
 
     args = parser.parse_args()

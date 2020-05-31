@@ -189,7 +189,9 @@ def train(shard: int, args):
             original_args = store["_original_args"]
             epoch_start = store["epoch"]
             best_validation_loss = store["best_validation_loss"]
-            best_character_error_rate = store["best_character_error_rate"]
+            best_character_error_rate = (
+                store["best_character_error_rate"] if "best_character_error_rate" in store else 1.0
+            )  # bugfix, wasn't always written
             # overrides
             if args.override_learning_rate is not None:
                 original_args.learning_rate = args.override_learning_rate
@@ -437,7 +439,11 @@ def train(shard: int, args):
             rvqe,
             optimizer,
             extra_tag="final" if not environment.is_timeout else "interrupted",
-            **{"epoch": epoch, "best_validation_loss": best_validation_loss},
+            **{
+                "epoch": epoch,
+                "best_validation_loss": best_validation_loss,
+                "best_character_error_rate": best_character_error_rate,
+            },
         )
         environment.logger.add_hparams(
             {
@@ -631,11 +637,7 @@ if __name__ == "__main__":
         help="learning rate for optimizer",
     )
     parser_resume.add_argument(
-        "--override-batch-size",
-        metavar="LR",
-        type=float,
-        default=None,
-        help="batch size",
+        "--override-batch-size", metavar="LR", type=int, default=None, help="batch size",
     )
 
     args = parser.parse_args()

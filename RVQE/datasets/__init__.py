@@ -3,6 +3,7 @@ from .simple import DataSimpleSequences, DataSimpleQuotes
 from .elman import DataElmanXOR, DataElmanLetter
 from .mnist import *
 from .mnistpca import *
+from .mnisttsne import *
 
 all_datasets = {
     "simple-seq": DataSimpleSequences,
@@ -27,6 +28,15 @@ all_datasets = {
     "mnist-pca-r4-p2": DataMNISTPCA_r4p2,
     "mnist-pca-r4-p5": DataMNISTPCA_r4p5,
     "mnist-pca-r4-p8": DataMNISTPCA_r4p8,
+    
+    "mnist-tsne-d2-r2": DataMNISTtSNE_d2r2,
+    "mnist-tsne-d2-r5": DataMNISTtSNE_d2r5,
+    "mnist-tsne-d2-r8": DataMNISTtSNE_d2r8,
+
+    "mnist-tsne-d3-r2": DataMNISTtSNE_d3r2,
+    "mnist-tsne-d3-r5": DataMNISTtSNE_d3r5,
+    "mnist-tsne-d3-r8": DataMNISTtSNE_d3r8,
+
     "mnist01-gen": DataMNIST01_Gen,
     "shakespeare": DataShakespeare,
 }

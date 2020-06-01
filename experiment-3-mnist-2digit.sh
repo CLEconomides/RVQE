@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # mnist01 or mnist36
 
-seeds=( 48225 52473 38637 88743 17613 19587 17415 15629 77153 97512 83937 37571 24434 12186 21750 66718 37375 54635 24830 88130 95737 50215 58711 69903 23407 44170 74966 33622 34931 13741 )
+seeds=( 48225 52473 38637 88743 17613 19587 )
 
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
@@ -17,7 +17,12 @@ trap "exit" INT
 sleep $[ ($RANDOM % 40) + 1 ]s
 
 
+PORT=27777
+
+
 for sd in "${seeds[@]}"; do
+    # increment port in case multiple runs on same machine
+    ((PORT++))
 
     TAG="$DATASET-$sd"
 
@@ -41,10 +46,11 @@ for sd in "${seeds[@]}"; do
     
     # run test
     echo "running $TAG"
-    ./main.py \
+    OMP_NUM_THREADS=2 ./main.py \
         --tag experiment-$TAG \
         --seed $sd \
-        --num-shards 2 \
+        --port $PORT \
+        --num-shards 1 \
         --epochs 5000 \
         train \
         --dataset $DATASET \

@@ -284,7 +284,7 @@ class DataMNIST01_Gen(DataMNISTBase):
     """
 
     def __init__(self, shard: int, **kwargs):
-        super().__init__(shard, digits=[0, 1], scanlines=[0, 1], **kwargs)
+        super().__init__(shard, digits=[0, 1], scanlines=[0, 1], deskewed=True, large=False, **kwargs)
 
     def next_batch(self, _, stage: TrainingStage) -> Batch:
         # extract random batch of sentences
@@ -316,3 +316,13 @@ class DataMNIST01_Gen(DataMNISTBase):
 
     def to_human(self, target: torch.LongTensor, offset: int = 0) -> str:
         return super()._print_as_images(target)
+
+
+    def filter(self, sequence: torch.LongTensor, dim: int) -> torch.LongTensor:
+        return sequence
+
+    def filter_sentence(self, sentence: torch.LongTensor) -> torch.LongTensor:
+        return sentence
+
+    def _ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
+        return False

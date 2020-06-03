@@ -296,8 +296,16 @@ def train(shard: int, args):
 
                 optimizer.zero_grad()
                 probs, _, min_postsel_prob = rvqe(sentences, targets, postselect_measurement=True)
-                _probs = dataset.filter(probs, dim=2)
-                _targets = dataset.filter(data.skip_first(targets), dim=1)
+                _probs = dataset.filter(
+                    probs, dim_sequence=2, targets_hint=data.skip_first(targets), dim_targets=1
+                )
+                _targets = dataset.filter(
+                    data.skip_first(targets),
+                    dim_sequence=1,
+                    targets_hint=data.skip_first(targets),
+                    dim_targets=1,
+                )
+
                 loss = criterion(
                     _probs, data.targets_for_loss(_targets)
                 )  # the model never predicts the first token
@@ -330,8 +338,19 @@ def train(shard: int, args):
                     measured_probs, measured_sequences, min_postsel_prob = rvqe(
                         sentences, targets, postselect_measurement=dataset.ignore_output_at_step
                     )
-                    _probs = dataset.filter(measured_probs, dim=2)
-                    _targets = dataset.filter(data.skip_first(targets), dim=1)
+                    _probs = dataset.filter(
+                        measured_probs,
+                        dim_sequence=2,
+                        targets_hint=data.skip_first(targets),
+                        dim_targets=1,
+                    )
+                    _targets = dataset.filter(
+                        data.skip_first(targets),
+                        dim_sequence=1,
+                        targets_hint=data.skip_first(targets),
+                        dim_targets=1,
+                    )
+
                     validation_loss = criterion(_probs, data.targets_for_loss(_targets))
                     min_postsel_prob = tensor(min_postsel_prob)
 
@@ -370,8 +389,18 @@ def train(shard: int, args):
 
                         # character error rate
                         character_error_rate = data.character_error_rate(
-                            dataset.filter(measured_sequences, dim=1),
-                            dataset.filter(data.skip_first(targets), dim=1),
+                            dataset.filter(
+                                measured_sequences,
+                                dim_sequence=1,
+                                targets_hint=data.skip_first(targets),
+                                dim_targets=1,
+                            ),
+                            dataset.filter(
+                                data.skip_first(targets),
+                                dim_sequence=1,
+                                targets_hint=data.skip_first(targets),
+                                dim_targets=1,
+                            ),
                         )
 
                         print(

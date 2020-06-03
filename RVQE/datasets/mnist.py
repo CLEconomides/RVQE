@@ -172,20 +172,17 @@ class DataMNISTBase(DataFactory):
             else:
                 return colorful.bold("?")
 
-    def filter(self, sequence: torch.LongTensor, dim: int) -> torch.LongTensor:
+    def filter(self, sequence: torch.LongTensor, *, dim_sequence: int, **__) -> torch.LongTensor:
         """
             we expect these to be offset by 1 from a proper output of length 100, i.e. only of length 99
             we only care about the last self.label_length pixels
         """
-        assert sequence.dim() == 3 and dim in [1, 2]
+        assert sequence.dim() == 3 and dim_sequence in [1, 2]
 
-        if dim == 1:
+        if dim_sequence == 1:
             return sequence[:, -self.label_length :, :]
-        elif dim == 2:
+        elif dim_sequence == 2:
             return sequence[:, :, -self.label_length :]
-
-    def filter_sentence(self, sentence: torch.LongTensor) -> torch.LongTensor:
-        return sentence[-self.label_length :]
 
     def _ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
         """
@@ -284,7 +281,9 @@ class DataMNIST01_Gen(DataMNISTBase):
     """
 
     def __init__(self, shard: int, **kwargs):
-        super().__init__(shard, digits=[0, 1], scanlines=[0, 1], deskewed=True, large=False, **kwargs)
+        super().__init__(
+            shard, digits=[0, 1], scanlines=[0, 1], deskewed=True, large=False, **kwargs
+        )
 
     def next_batch(self, _, stage: TrainingStage) -> Batch:
         # extract random batch of sentences
@@ -317,12 +316,8 @@ class DataMNIST01_Gen(DataMNISTBase):
     def to_human(self, target: torch.LongTensor, offset: int = 0) -> str:
         return super()._print_as_images(target)
 
-
-    def filter(self, sequence: torch.LongTensor, dim: int) -> torch.LongTensor:
+    def filter(self, sequence: torch.LongTensor, *, dim_sequence: int, **__) -> torch.LongTensor:
         return sequence
-
-    def filter_sentence(self, sentence: torch.LongTensor) -> torch.LongTensor:
-        return sentence
 
     def _ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
         return False

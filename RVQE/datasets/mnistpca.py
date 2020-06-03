@@ -98,20 +98,17 @@ class DataMNISTPCABase(DataFactory):
             else:
                 return colorful.bold("?")
 
-    def filter(self, sequence: torch.LongTensor, dim: int) -> torch.LongTensor:
+    def filter(self, sequence: torch.LongTensor, *, dim_sequence: int, **__) -> torch.LongTensor:
         """
             we expect these to be offset by 1 from a proper output of length 100, i.e. only of length 99
             we only care about the last self.LABEL_LENGTH pixels
         """
-        assert sequence.dim() == 3 and dim in [1, 2]
+        assert sequence.dim() == 3 and dim_sequence in [1, 2]
 
-        if dim == 1:
+        if dim_sequence == 1:
             return sequence[:, -self.LABEL_LENGTH :, :]
-        elif dim == 2:
+        elif dim_sequence == 2:
             return sequence[:, :, -self.LABEL_LENGTH :]
-
-    def filter_sentence(self, sentence: torch.LongTensor) -> torch.LongTensor:
-        return sentence[-self.LABEL_LENGTH :]
 
     def _ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
         """

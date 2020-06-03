@@ -75,22 +75,19 @@ class DataElmanXOR(DataFactory):
                 [style_triple(triple.tolist()) for triple in torch.split(target[2:], 3)]
             )
 
-    def filter(self, sequence: torch.LongTensor, dim: int) -> torch.Tensor:
+    def filter(self, sequence: torch.LongTensor, *, dim_sequence: int, **__) -> torch.LongTensor:
         """
             we expect these to be offset by 1 from a proper output, i.e.
             01 110 000 011
              |   |   |   |
             and skip all elements other than that in the given direction
         """
-        assert sequence.dim() == 3 and dim in [1, 2]
+        assert sequence.dim() == 3 and dim_sequence in [1, 2]
 
-        if dim == 1:
+        if dim_sequence == 1:
             return sequence[:, 1::3, :]
-        elif dim == 2:
+        elif dim_sequence == 2:
             return sequence[:, :, 1::3]
-
-    def filter_sentence(self, sentence: torch.LongTensor) -> torch.Tensor:
-        return sentence[1::3]
 
     def _ignore_output_at_step(self, index: int, target: Union[tensor, Bitword]) -> bool:
         """

@@ -166,11 +166,19 @@ class DataFactory(ABC):
         """
         pass
 
-    def filter(self, sequence: torch.LongTensor, dim: int) -> torch.LongTensor:
+    def filter(
+        self,
+        sequence: torch.LongTensor,
+        *,
+        dim_sequence: int,
+        targets_hint: torch.LongTensor,
+        dim_targets: int,
+    ) -> torch.LongTensor:
+        """
+            return a filtered sequence for use in validation loss and character error rate.
+            The target tensor can be used as hint on what to filter.
+        """
         return sequence
-
-    def filter_sentence(self, sentence: torch.LongTensor) -> torch.LongTensor:
-        return sentence
 
     def _ignore_output_at_step(self, index: int, target: Union[torch.LongTensor, Bitword]) -> bool:
         return False

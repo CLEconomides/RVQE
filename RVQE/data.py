@@ -80,7 +80,7 @@ def targets_for_loss(sentences: torch.LongTensor):
         W - word width
     """
     if sentences.dim() == 2:
-        sentences = batch.unsqueeze(0)
+        sentences = sentences.unsqueeze(0)
     assert sentences.dim() == 3
 
     return tensor([[bitword_to_int(word) for word in sentence] for sentence in sentences])

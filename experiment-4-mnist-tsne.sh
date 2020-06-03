@@ -50,7 +50,7 @@ for dataset in "${datasets[@]}"; do
         --epochs 5000 \
         train \
         --dataset $dataset \
-        --workspace 8 \
+        --workspace 6 \
         --stages 2 \
         --order 2 \
         --degree 3 \

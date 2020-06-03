@@ -51,8 +51,6 @@ class DataDNA(DataFactory):
     def to_human(self, target: torch.LongTensor, offset: int = 0) -> str:
         target = tensor([bitword_to_int(t) for t in target])
 
-        print(target)
-
         if offset == 0:  # gold
             is_input = max(target) >= 4
             idx_U = (target >= 4).nonzero()[0, 0].item()

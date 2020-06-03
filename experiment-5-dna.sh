@@ -48,6 +48,7 @@ for sd in "${seeds[@]}"; do
         --port $PORT \
         --num-shards 2 \
         --epochs 1000 \
+        --stop-at-loss 0.0005 \
         train \
         --dataset dna \
         --sentence-length $len \

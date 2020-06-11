@@ -15,10 +15,19 @@ Optional packages:
 
 ## Folder Structure
 
-    ./notebooks/        # contains jupyter notebook for MNIST t-SNE augmentation,
-                        # model evaluations, and RNN/LSTM reference implementation for DNA sequence test
     ./RVQE/             # implementation of QRNN as pytorch model
     ./RVQE/datasets/    # datasets and necessary resources
+
+    ./runs/
+    ./locks/
+    ./checkpoints/      # empty folders used for tensorboard logs, checkpoints, and for synchronizing experiments on multi-rank systems
+
+    ./notebooks/        # contains jupyter notebook for MNIST t-SNE augmentation,
+                        # model test set evaluations,
+                        # and RNN/LSTM reference implementation for DNA sequence test
+    ./results/          # results used in paper; contains mathematica notebooks for plots,
+                        # training data in csv format used to produce plots, and
+                        # pre-trained models that performed best
 
     ./main.py           # main training program
 
@@ -70,3 +79,8 @@ A few of the parameters can be overridden, e.g. a new learning rate can be set.
 No external datasets are necessary; the implemented ones can be elected with the `--dataset` switch. Some datasets for memorizing sequences require a certain batch size or number of shards or combinations thereof; the program will complain if this is manually set to something invalid (e.g., `--dataset simple-seq` makes the QRNN learn precisely two sequences, so the setup is such that either `--num-shards 2 ... --batch-size 1` or `--num-shards 1 ... --batch-size 2` is allowed). Most datasets do not have such a restriction.
 
 For MNIST, the batch size indicates how many samples _of each digit_ are presented.
+
+
+## Experiments
+
+The root folder contains more experiments than were run for the paper. Many of them perform grid search over parameter ranges, or seeds, to get statistics on learning performance. They are often set up to match a certain cluster, so modify to suit your needs before execution. Training data produced with them was used directly in producing the datasets under `./results/`, and the best MNIST models are collected in `./results/best/`, to be evaluated on their respective test sets in the `./notebooks/` folder.

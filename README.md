@@ -25,7 +25,6 @@ Optional packages:
     ./*.sh              # various experiment presets used in the paper
                         # modify these to match your training environment
 
-No external datasets are necessary.
 
 
 ## Running
@@ -64,3 +63,10 @@ When training is interrupted, a checkpoint can simply be restarted with
     ./main.py resume checkpoint-name.tar.gz
 
 A few of the parameters can be overridden, e.g. a new learning rate can be set.
+
+
+## Datasets
+
+No external datasets are necessary; the implemented ones can be elected with the `--dataset` switch. Some datasets for memorizing sequences require a certain batch size or number of shards or combinations thereof; the program will complain if this is manually set to something invalid (e.g., `--dataset simple-seq` makes the QRNN learn precisely two sequences, so the setup is such that either `--num-shards 2 ... --batch-size 1` or `--num-shards 1 ... --batch-size 2` is allowed). Most datasets do not have such a restriction.
+
+For MNIST, the batch size indicates how many samples _of each digit_ are presented.

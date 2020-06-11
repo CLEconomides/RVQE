@@ -2,3 +2,5 @@
 .vscode/
 *__pycache__*
 runs/
+checkpoints/
+locks/

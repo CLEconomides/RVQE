@@ -76,9 +76,11 @@ A few of the parameters can be overridden, e.g. a new learning rate can be set.
 
 ## Datasets
 
-No external datasets are necessary; the implemented ones can be elected with the `--dataset` switch. Some datasets for memorizing sequences require a certain batch size or number of shards or combinations thereof; the program will complain if this is manually set to something invalid (e.g., `--dataset simple-seq` makes the QRNN learn precisely two sequences, so the setup is such that either `--num-shards 2 ... --batch-size 1` or `--num-shards 1 ... --batch-size 2` is allowed). Most datasets do not have such a restriction.
+No external datasets are necessary; the implemented ones can be elected with the `--dataset` switch, and all required files are precomputed. Some datasets for memorizing sequences require a certain batch size or number of shards or combinations thereof; the program will complain if this is manually set to something invalid (e.g., `--dataset simple-seq` makes the QRNN learn precisely two sequences, so the setup is such that either `--num-shards 2 ... --batch-size 1` or `--num-shards 1 ... --batch-size 2` is allowed). Most datasets do not have such a restriction.
 
 For MNIST, the batch size indicates how many samples _of each digit_ are presented.
+
+MNIST data augmentation with t-SNE was too slow in mathematica alone; hence it is broken up into two steps, data preparation using the `./notebooks/mnist.nb` MM file, and `./notebooks/mnist-tsne.ipynb` file which performs the heavy lifting. The created data can then be re-imported in MM, and exported for use in training. All of these files are included for transparency, and do not have to be executed before using the code.
 
 
 ## Experiments

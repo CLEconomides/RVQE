@@ -4,6 +4,7 @@
 
 optimizers=( "sgd" "rmsprop" "adam" )
 learningrates=( 10.0 5.0 2.0 1.0 0.5 0.2 0.1 0.05 0.02 0.01 0.005 0.002 0.001 0.0005 0.0002 0.0001 0.00005 0.00002 0.00001 )
+seeds=( 12 14 16 18 20 )
 
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
@@ -11,28 +12,64 @@ mkdir -p "$LOCKFILEFOLDER"
 trap "exit" INT
 sleep $[ ($RANDOM % 10) + 1 ]s
 
-for optim in "${optimizers[@]}"
-do
-    for lr in "${learningrates[@]}"
-    do
-        TAG="optimizer-$optim-$lr"
 
-        LOCKFILE="$LOCKFILEFOLDER/experiment-$TAG.lock"
-        DONEFILE="$LOCKFILEFOLDER/experiment-$TAG.done"
-        sync
-        
-        if [[ ! -f "$DONEFILE" ]] ; then
-            {
-                if flock -n 200 ; then
-                    echo "running $TAG"
-                    ./main.py --tag experiment-$TAG --epochs 500 train --optimizer $optim --learning-rate $lr --workspace 5 --stages 5 --order 2
-                    touch "$DONEFILE"
-                    sync
-                    sleep 1
-                else
-                    echo "skipping $TAG"
-                fi
-            } 200>"$LOCKFILE"
-        fi
-    done
+PORT=27777
+
+
+for optim in "${optimizers[@]}"; do
+for lr in "${learningrates[@]}"; do
+for sd in "${seeds[@]}"; do
+    # increment port in case multiple runs on same machine
+    ((PORT++)) 
+
+    TAG="optimizer-$optim-$lr-$sd"
+
+    LOCKFILE="$LOCKFILEFOLDER/experiment-$TAG.lock"
+    DONEFILE="$LOCKFILEFOLDER/experiment-$TAG.done"
+    FAILFILE="$LOCKFILEFOLDER/experiment-$TAG.fail"
+
+    # check if any lockfiles present
+    sync
+    if [[ -f "$DONEFILE" || -f "$FAILFILE" || -f "$LOCKFILE" ]] ; then
+        echo "skipping $TAG"
+        continue
+    fi
+
+    # try to aquire lockfile
+    exec 200>"$LOCKFILE"
+    flock -n 200 || {
+        echo "skipping $TAG"
+        continue
+    }
+    
+    echo "running $TAG"
+     ./main.py \
+        --tag experiment-$TAG \
+        --num-shards 1 \
+        --seed $sd \
+        --port $PORT \
+        --epochs 500 \
+        train \
+        --dataset simple-seq \
+        --batch-size 2 \
+        --optimizer $optim \
+        --learning-rate $lr \
+        --workspace 5 \
+        --stages 5 \
+        --order 2
+    
+    if  [[ $? -eq 0 ]] ; then
+        touch "$DONEFILE"    
+    else
+        touch "$FAILFILE"    
+        echo "failure running $TAG."
+    fi 
+
+    sync   
+    sleep 10
+    rm "$LOCKFILE"
+    sync   
+    sleep 10
+done
+done
 done

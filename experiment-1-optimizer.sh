@@ -49,6 +49,7 @@ for sd in "${seeds[@]}"; do
         --seed $sd \
         --port $PORT \
         --epochs 500 \
+        --stop-at-loss 0.000005 \
         train \
         --dataset simple-seq \
         --batch-size 2 \

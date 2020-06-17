@@ -2,9 +2,9 @@
 # test which optimizer works within which regime
 # this experiment is very neat and simple; keep
 
-optimizers=( "sgd" "rmsprop" "adam" )
+optimizers=( "sgd" "rmsprop" "adam" "lbfgs" )
 learningrates=( 10.0 5.0 2.0 1.0 0.5 0.2 0.1 0.05 0.02 0.01 0.005 0.002 0.001 0.0005 0.0002 0.0001 0.00005 0.00002 0.00001 )
-seeds=( 12 14 16 18 20 )
+seeds=( 112 113 114 115 116 )
 
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
@@ -55,7 +55,7 @@ for sd in "${seeds[@]}"; do
         --optimizer $optim \
         --learning-rate $lr \
         --workspace 5 \
-        --stages 5 \
+        --stages 2 \
         --order 2
     
     if  [[ $? -eq 0 ]] ; then

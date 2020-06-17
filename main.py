@@ -240,7 +240,9 @@ def train(shard: int, args):
                 weight_decay=original_args.weight_decay,
             )
         elif original_args.optimizer == "lbfgs":
-            optimizer = torch.optim.LBFGS(rvqe.parameters(), lr=original_args.learning_rate)
+            optimizer = torch.optim.LBFGS(
+                rvqe.parameters(), lr=original_args.learning_rate, history_size=40
+            )
 
         # when in resume mode, load model and optimizer state; otherwise initialize
         if RESUME_MODE:
@@ -309,9 +311,9 @@ def train(shard: int, args):
                 loss = criterion(
                     _probs, data.targets_for_loss(_targets)
                 )  # the model never predicts the first token
-                loss.backward()
-
-                torch.nn.utils.clip_grad_norm_(rvqe.parameters(), 0.5)
+                if loss.requires_grad:
+                    loss.backward()
+                    torch.nn.utils.clip_grad_norm_(rvqe.parameters(), 0.5)
 
                 return loss
 

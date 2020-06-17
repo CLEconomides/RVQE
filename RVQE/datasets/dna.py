@@ -34,7 +34,7 @@ class DataDNA(DataFactory):
             target = torch.zeros((self.sentence_length,)).int()
 
             # position of "C" anywhere but at the first and last index
-            idx_U = torch.randint(1, self.sentence_length//2, (1,), generator=self.rng).item()
+            idx_U = torch.randint(1, self.sentence_length // 2, (1,), generator=self.rng).item()
             target[idx_U:] = sentence[idx_U]
             target[idx_U] = sentence[idx_U] = sentence[idx_U] + 4  # mark U
 

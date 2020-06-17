@@ -56,7 +56,8 @@ for sd in "${seeds[@]}"; do
         --learning-rate $lr \
         --workspace 5 \
         --stages 2 \
-        --order 2
+        --order 2 \
+        --degree 3
     
     if  [[ $? -eq 0 ]] ; then
         touch "$DONEFILE"    

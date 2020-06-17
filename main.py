@@ -313,7 +313,7 @@ def train(shard: int, args):
                 )  # the model never predicts the first token
                 if loss.requires_grad:
                     loss.backward()
-                    torch.nn.utils.clip_grad_norm_(rvqe.parameters(), 0.5)
+                    #torch.nn.utils.clip_grad_norm_(rvqe.parameters(), 0.5)
 
                 return loss
 
@@ -484,7 +484,7 @@ def train(shard: int, args):
             },
             {
                 "hparams/epoch": epoch,
-                "hparams/num_parameters": len(list(rvqe.parameters())),
+                "hparams/num_parameters": count_parameters(rvqe),
                 "hparams/validate_best": best_validation_loss,
                 "hparams/character_error_rate_best": best_character_error_rate,
             },

@@ -12,7 +12,7 @@ trap "exit" INT
 sleep $[ ($RANDOM % 40) + 1 ]s
 
 
-PORT=27777
+PORT=37777
 
 
 for sd in "${seeds[@]}"; do

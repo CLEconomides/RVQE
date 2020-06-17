@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # mnist 8 digits
 
-seeds=( 23482 29328 23928 38282 24484 34382 28888 30114 )
+seeds=( 23482 29328 23928 38282 24484 34382 28888 30114 23444 )
 
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
@@ -17,7 +17,12 @@ trap "exit" INT
 sleep $[ ($RANDOM % 40) + 1 ]s
 
 
+PORT=27777
+
+
 for sd in "${seeds[@]}"; do
+    # increment port in case multiple runs on same machine
+    ((PORT++))
 
     TAG="$DATASET-$sd"
 
@@ -44,18 +49,18 @@ for sd in "${seeds[@]}"; do
     OMP_NUM_THREADS=2 ./main.py \
         --tag experiment-$TAG \
         --seed $sd \
-        --port $sd \
-        --num-shards 4 \
+        --port $PORT \
+        --num-shards 2 \
         --epochs 5000 \
         train \
         --dataset $DATASET \
-        --workspace 10 \
+        --workspace 7 \
         --stages 2 \
         --order 2 \
         --degree 3 \
-        --optimizer adam \
-        --learning-rate 0.0025 \
-        --batch-size 10
+        --optimizer lbfgs \
+        --learning-rate 0.02 \
+        --batch-size 4
     
     if  [[ $? -eq 0 ]] ; then
         touch "$DONEFILE"    

@@ -14,16 +14,11 @@ trap "exit" INT
 sleep $[ ($RANDOM % 40) + 1 ]s
 
 
-for sd in "${seeds[@]}"
-do
-for bias in "${biases[@]}"
-do
-for spreadBias in "${spreadsBias[@]}"
-do
-for spreadWeight in "${spreadsWeights[@]}"
-do
-for spreadUnitary in "${spreadsUnitaries[@]}"
-do
+for sd in "${seeds[@]}"; do
+for bias in "${biases[@]}"; do
+for spreadBias in "${spreadsBias[@]}"; do
+for spreadWeight in "${spreadsWeights[@]}"; do
+for spreadUnitary in "${spreadsUnitaries[@]}"; do
     TAG="elman-xor-initialization-$sd-$bias-$spreadBias-$spreadWeight-$spreadUnitary"
 
     LOCKFILE="$LOCKFILEFOLDER/experiment-$TAG.lock"

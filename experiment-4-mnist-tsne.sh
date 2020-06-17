@@ -54,8 +54,8 @@ for dataset in "${datasets[@]}"; do
         --stages 2 \
         --order 2 \
         --degree 3 \
-        --optimizer adam \
-        --learning-rate 0.005 \
+        --optimizer lbfgs \
+        --learning-rate 0.02 \
         --batch-size 32
     
     if  [[ $? -eq 0 ]] ; then

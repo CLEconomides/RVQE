@@ -13,54 +13,69 @@ mkdir -p "$LOCKFILEFOLDER"
 trap "exit" INT
 sleep $[ ($RANDOM % 40) + 1 ]s
 
-for o in "${orders[@]}"
-do
-    for d in "${degrees[@]}"
-    do
-        for s in "${stages[@]}"
-        do
-            for w in "${workspaces[@]}"
-            do
-                TAG="topology-$o-$d-$s-$w"
 
-                LOCKFILE="$LOCKFILEFOLDER/experiment-$TAG.lock"
-                DONEFILE="$LOCKFILEFOLDER/experiment-$TAG.done"
-                sync
+PORT=27777
 
-                if [[ ! -f "$DONEFILE" ]] ; then
-                    {
-                        if flock -n 200 ; then
-                            echo "running $TAG"
-                            ./main.py \
-                                --tag experiment-$TAG \
-                                --seed 2349711 \
-                                --num-shards 2 \
-                                --epochs 500 \
-                                train \
-                                --dataset simple-seq \
-                                --workspace $w \
-                                --stages $s \
-                                --order $o \
-                                --degree $d \
-                                --optimizer rmsprop \
-                                --learning-rate 0.01 \
-                                --sentence-length 20 \
-                                --batch-size 1
-                            
-                            if  [[ $? -eq 0 ]] ; then
-                                touch "$DONEFILE"                
-                                sync
-                            else
-                                echo "failure running $TAG."
-                            fi
-                            sleep 1
 
-                        else
-                            echo "skipping $TAG"
-                        fi
-                    } 200>"$LOCKFILE"
-                fi
-            done
-        done
-    done
+for o in "${orders[@]}"; do
+for d in "${degrees[@]}"; do
+for s in "${stages[@]}"; do
+for w in "${workspaces[@]}"; do
+    # increment port in case multiple runs on same machine
+    ((PORT++)) 
+
+    TAG="topology-$o-$d-$s-$w"
+
+    LOCKFILE="$LOCKFILEFOLDER/experiment-$TAG.lock"
+    DONEFILE="$LOCKFILEFOLDER/experiment-$TAG.done"
+    FAILFILE="$LOCKFILEFOLDER/experiment-$TAG.fail"
+
+    # check if any lockfiles present
+    sync
+    if [[ -f "$DONEFILE" || -f "$FAILFILE" || -f "$LOCKFILE" ]] ; then
+        echo "skipping $TAG"
+        continue
+    fi
+
+    # try to aquire lockfile
+    exec 200>"$LOCKFILE"
+    flock -n 200 || {
+        echo "skipping $TAG"
+        continue
+    }
+    
+    echo "running $TAG"
+    ./main.py \
+        --tag experiment-$TAG \
+        --seed 2349711 \
+        --num-shards 2 \
+        --epochs 500 \
+        train \
+        --dataset simple-seq \
+        --workspace $w \
+        --stages $s \
+        --order $o \
+        --degree $d \
+        --optimizer rmsprop \
+        --learning-rate 0.01 \
+        --sentence-length 20 \
+        --batch-size 1
+
+
+    if  [[ $? -eq 0 ]] ; then
+        touch "$DONEFILE"    
+    else
+        touch "$FAILFILE"    
+        echo "failure running $TAG."
+    fi 
+
+    sync   
+    sleep 10
+    rm "$LOCKFILE"
+    sync   
+    sleep 10
+
+done
+done
+done
 done

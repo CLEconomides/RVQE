@@ -644,7 +644,7 @@ if __name__ == "__main__":
         "--initial-weights-spread",
         metavar="IWσ",
         type=float,
-        default=0.0,
+        default=0.01,
         help="initial weights spread for quantum neuron",
     )
     parser_train.add_argument(

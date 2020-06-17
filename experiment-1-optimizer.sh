@@ -58,7 +58,10 @@ for sd in "${seeds[@]}"; do
         --workspace 5 \
         --stages 2 \
         --order 2 \
-        --degree 3
+        --degree 3 \
+        --initial-bias-spread 0.5 \
+        --initial-weights-spread 0.5 \
+        --initial-unitaries-spread 0.5 
     
     if  [[ $? -eq 0 ]] ; then
         touch "$DONEFILE"    

@@ -50,16 +50,16 @@ for sd in "${seeds[@]}"; do
         --tag experiment-$TAG \
         --seed $sd \
         --port $PORT \
-        --num-shards 1 \
+        --num-shards 4 \
         --epochs 5000 \
         train \
         --dataset $DATASET \
         --workspace 8 \
         --stages 2 \
         --order 2 \
-        --degree 2 \
-        --optimizer adam \
-        --learning-rate 0.005 \
+        --degree 3 \
+        --optimizer lbfgs \
+        --learning-rate 0.02 \
         --batch-size 50
     
     if  [[ $? -eq 0 ]] ; then

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # mnist01 or mnist36
 
-seeds=( 48225 52473 38637 88743 17613 19587 )
+seeds=( 48225 52473 38637 88743 17613 19587 37737 29348 30303 )
 
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
@@ -50,14 +50,14 @@ for sd in "${seeds[@]}"; do
         --tag experiment-$TAG \
         --seed $sd \
         --port $PORT \
-        --num-shards 4 \
+        --num-shards 2 \
         --epochs 5000 \
         train \
         --dataset $DATASET \
         --workspace 8 \
         --stages 2 \
         --order 2 \
-        --degree 3 \
+        --degree 2 \
         --optimizer lbfgs \
         --learning-rate 0.02 \
         --batch-size 50

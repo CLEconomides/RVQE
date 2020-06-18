@@ -106,6 +106,9 @@ class DistributedTrainingEnvironment:
         torch.distributed.all_gather(gather_list, data)  # gather has a bug, so use all_gather
         return gather_list
 
+    def broadcast(self, data: torch.Tensor):
+        torch.distributed.broadcast(data, 0)
+
     @property
     def is_timeout(self) -> bool:
         if self.timeout is None:
@@ -457,11 +460,14 @@ def train(shard: int, args):
 
                 # ENDWITH torch.no_grad
 
+                environment.broadcast(validation_loss)
                 if args.stop_at_loss is not None and args.stop_at_loss > validation_loss:
+                    print(f"stopping training because validation_loss={validation_loss} < args.stop_at_loss={args.stop_at_loss}")
                     break  # breaks out of training loop
 
             # ENDIF validation
 
+            print_all("beep")
             environment.synchronize()
         # END training loop
 

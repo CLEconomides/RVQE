@@ -55,10 +55,10 @@ for sd in "${seeds[@]}"; do
         --epochs 5000 \
         train \
         --dataset $DATASET \
-        --workspace 8 \
+        --workspace 6 \
         --stages 2 \
         --order 2 \
-        --degree 2 \
+        --degree 3 \
         --optimizer lbfgs \
         --learning-rate 0.02 \
         --batch-size 50

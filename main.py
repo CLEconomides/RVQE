@@ -101,6 +101,10 @@ class DistributedTrainingEnvironment:
         torch.distributed.reduce(data, 0, reduce_op)
         return data
 
+    def all_reduce(self, data: torch.Tensor, reduce_op: ReduceOp) -> torch.Tensor:
+        torch.distributed.all_reduce(data, reduce_op)
+        return data
+
     def gather(self, data: torch.Tensor) -> List[torch.Tensor]:
         gather_list = [torch.ones_like(data) for _ in range(self.world_size)]
         torch.distributed.all_gather(gather_list, data)  # gather has a bug, so use all_gather
@@ -117,7 +121,7 @@ class DistributedTrainingEnvironment:
         ret = tensor([0])
         if (timer() - self._time_start) > self.timeout:
             ret[:] = 1
-            torch.distributed.broadcast(ret, 0)
+            self.broadcast(ret, 0)
 
         self.synchronize()
 
@@ -318,6 +322,11 @@ def train(shard: int, args):
                     loss.backward()
                     #torch.nn.utils.clip_grad_norm_(rvqe.parameters(), 0.5)
 
+                # gradients are automatically synchronized; loss itself isn't
+                # since the optimizer might make a decision on re-calling the closure,
+                # we need to ensure all shards see the same loss as well.
+                loss = environment.all_reduce(loss, ReduceOp.SUM) / args.num_shards
+
                 return loss
 
             optimizer.step(loss_closure)
@@ -364,14 +373,13 @@ def train(shard: int, args):
                     targets = environment.gather(targets)
                     min_postsel_prob = environment.gather(min_postsel_prob)
                     measured_sequences = environment.gather(measured_sequences)
-                    validation_loss = environment.reduce(validation_loss, ReduceOp.SUM)
+                    validation_loss = environment.all_reduce(validation_loss, ReduceOp.SUM) / args.num_shards
 
                     if shard == 0:
                         sentences = torch.cat(sentences)
                         targets = torch.cat(targets)
                         measured_sequences = torch.cat(measured_sequences)
                         min_postsel_prob = torch.stack(min_postsel_prob).min()
-                        validation_loss /= args.num_shards
 
                         if not dataset.overrides_batch_size:
                             assert (
@@ -460,14 +468,12 @@ def train(shard: int, args):
 
                 # ENDWITH torch.no_grad
 
-                environment.broadcast(validation_loss)
                 if args.stop_at_loss is not None and args.stop_at_loss > validation_loss:
                     print(f"stopping training because validation_loss={validation_loss} < args.stop_at_loss={args.stop_at_loss}")
                     break  # breaks out of training loop
 
             # ENDIF validation
 
-            print_all("beep")
             environment.synchronize()
         # END training loop
 

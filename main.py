@@ -320,7 +320,7 @@ def train(shard: int, args):
                 )  # the model never predicts the first token
                 if loss.requires_grad:
                     loss.backward()
-                    #torch.nn.utils.clip_grad_norm_(rvqe.parameters(), 0.5)
+                    torch.nn.utils.clip_grad_norm_(rvqe.parameters(), 0.5)
 
                 # gradients are automatically synchronized; loss itself isn't
                 # since the optimizer might make a decision on re-calling the closure,

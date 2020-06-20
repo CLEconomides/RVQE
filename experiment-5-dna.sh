@@ -2,14 +2,14 @@
 # mnist 8 digits
 
 seeds=( 29885 27489 31509 25388 27175 32030 31615 30680 34899 25969 32780 30084 33470 26845 32630 28785 30883 26159 30762 34317 26305 33016 29421 25127 33282 33391 34143 31087 30698 27968 )
-lengths=( 5 10 15 20 25 30 )
+lengths=( 5 10 15 20 25 30 50 100 )
 
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
 
 
 trap "exit" INT
-sleep $[ ($RANDOM % 40) + 1 ]s
+sleep $[ ($RANDOM % 10) + 1 ]s
 
 
 PORT=27777
@@ -42,23 +42,25 @@ for sd in "${seeds[@]}"; do
     
     # run test
     echo "running $TAG"
-    OMP_NUM_THREADS=2 ./main.py \
+    cmd="OMP_NUM_THREADS=2 ./main.py \
         --tag experiment-$TAG \
         --seed $sd \
         --port $PORT \
         --num-shards 2 \
-        --epochs 1000 \
-        --stop-at-loss 0.0005 \
+        --epochs 5000 \
+        --stop-at-loss 0.001 \
+        --timeout 42840 \
         train \
         --dataset dna \
         --sentence-length $len \
-        --workspace 6 \
-        --stages 2 \
+        --workspace 3 \
+        --stages 1 \
         --order 2 \
         --degree 3 \
         --optimizer adam \
-        --learning-rate 0.005 \
-        --batch-size 128
+        --learning-rate 0.01 \
+        --batch-size 128"
+    srun --pty -p skylake --time 2:00:00 --ntasks 1 --cpus-per-task 4 --threads-per-core 1 bash -c "$cmd"
     
     if  [[ $? -eq 0 ]] ; then
         touch "$DONEFILE"    

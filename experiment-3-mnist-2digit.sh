@@ -3,7 +3,7 @@
 
 seeds=( 2342 2532 1512 )
 lrs=( 0.3 0.1 0.03 0.01 0.003 )
-dgs=( 2 3 )
+dgs=( 3 )
 
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
@@ -62,7 +62,7 @@ for dg in "${dgs[@]}"; do
         --stages 2 \
         --order 2 \
         --degree $dg \
-        --optimizer lbfgs \
+        --optimizer adam \
         --learning-rate $lr \
         --batch-size 50
     

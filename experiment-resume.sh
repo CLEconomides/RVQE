@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# mnist 8 digits
+# resuming experiments
 
-seeds=( 28258 28259 28260 )
+seeds=( 28258 )
 checkpoints=( "$@" )
 
 LOCKFILEFOLDER="./locks"
@@ -11,7 +11,7 @@ mkdir -p "$LOCKFILEFOLDER"
 trap "exit" INT
 sleep $[ ($RANDOM % 40) + 1 ]s
 
-PORT=27777
+PORT=42000
 
 for sd in "${seeds[@]}"; do
 for checkpoint in "${checkpoints[@]}"; do
@@ -48,9 +48,9 @@ for checkpoint in "${checkpoints[@]}"; do
         --num-shards 2 \
         --epochs 10000 \
         resume \
-        `ls -t checkpoints/*$checkpoint* | head -1` \
-        --override-learning-rate 0.001 \
-        --override-batch-size 50
+        `ls -t results/best/mnist36.2/*$checkpoint* | head -1` \
+        --override-learning-rate 0.005 \
+        --override-batch-size 250
 
     
     if  [[ $? -eq 0 ]] ; then

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # mnist01 or mnist36
 
-#seeds=( 48225 52473 38637 88743 17613 19587 37737 29348 30303 )
-#seeds=( 148225 252473 338637 488743 517613 619587 737737 829348 930303 )
-seeds=( 2912 5804 8451 2563 9950 3926 8709 8836 8637 3245 2946 7155 2570 6999 2895 1856 3362 7929 5477 6705 2859 8293 5658 5009 7206 3054 8593 2904 2321 7351 )
+seeds=( 2342 2532 1512 )
+lrs=( 0.3 0.1 0.03 0.01 0.003 )
+dgs=( 2 3 )
 
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
@@ -23,10 +23,12 @@ PORT=27777
 
 
 for sd in "${seeds[@]}"; do
+for lr in "${lrs[@]}"; do
+for dg in "${dgs[@]}"; do
     # increment port in case multiple runs on same machine
     ((PORT++))
 
-    TAG="$DATASET-$sd"
+    TAG="$DATASET-$sd-$lr-$dg"
 
     LOCKFILE="$LOCKFILEFOLDER/experiment-$TAG.lock"
     DONEFILE="$LOCKFILEFOLDER/experiment-$TAG.done"
@@ -59,9 +61,9 @@ for sd in "${seeds[@]}"; do
         --workspace 6 \
         --stages 2 \
         --order 2 \
-        --degree 3 \
+        --degree $dg \
         --optimizer lbfgs \
-        --learning-rate 0.02 \
+        --learning-rate $lr \
         --batch-size 50
     
     if  [[ $? -eq 0 ]] ; then
@@ -77,4 +79,6 @@ for sd in "${seeds[@]}"; do
     sync   
     sleep 10
     
+done
+done
 done

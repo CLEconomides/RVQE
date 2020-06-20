@@ -53,7 +53,7 @@ for sd in "${seeds[@]}"; do
         train \
         --dataset dna \
         --sentence-length $len \
-        --workspace 3 \
+        --workspace 5 \
         --stages 1 \
         --order 2 \
         --degree 3 \

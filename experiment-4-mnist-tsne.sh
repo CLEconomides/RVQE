@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # mnist 8 digits
 
-seeds=( 29885 27489 31509 25388 27175 32030 31615 30680 34899 25969 32780 30084 33470 26845 32630 28785 30883 26159 30762 34317 26305 33016 29421 25127 33282 33391 34143 31087 30698 27968 )
-datasets=( "mnist-tsne-d2-r2" "mnist-tsne-d2-r5" "mnist-tsne-d2-r8" "mnist-tsne-d3-r2" "mnist-tsne-d3-r5" "mnist-tsne-d3-r8" )
+seeds=( 100 101 102 103 104 105 )
+datasets=( "mnist-tsne-d2-r2" "mnist-tsne-d2-r3" "mnist-tsne-d2-r4" "mnist-tsne-d2-r5" "mnist-tsne-d3-r2" "mnist-tsne-d3-r3" "mnist-tsne-d3-r4" "mnist-tsne-d3-r5" )
+lrs=( 0.3 0.1 0.03 0.01 )
 
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
@@ -17,10 +18,11 @@ PORT=37777
 
 for sd in "${seeds[@]}"; do
 for dataset in "${datasets[@]}"; do
+for lr in "${lrs[@]}"; do
     # increment port in case multiple runs on same machine
     ((PORT++))
 
-    TAG="pool-$dataset-$sd"
+    TAG="pool-$dataset-$sd-$lr"
 
     LOCKFILE="$LOCKFILEFOLDER/experiment-$TAG.lock"
     DONEFILE="$LOCKFILEFOLDER/experiment-$TAG.done"
@@ -50,12 +52,12 @@ for dataset in "${datasets[@]}"; do
         --epochs 5000 \
         train \
         --dataset $dataset \
-        --workspace 6 \
+        --workspace 5 \
         --stages 2 \
         --order 2 \
         --degree 3 \
-        --optimizer lbfgs \
-        --learning-rate 0.02 \
+        --optimizer adam \
+        --learning-rate $lr \
         --batch-size 32
     
     if  [[ $? -eq 0 ]] ; then
@@ -71,5 +73,6 @@ for dataset in "${datasets[@]}"; do
     sync   
     sleep 10
     
+done
 done
 done

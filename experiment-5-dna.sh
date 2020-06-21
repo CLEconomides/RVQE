@@ -2,7 +2,7 @@
 # mnist 8 digits
 
 seeds=( 29885 27489 31509 25388 27175 32030 31615 30680 34899 25969 32780 30084 33470 26845 32630 28785 30883 26159 30762 34317 26305 33016 29421 25127 33282 33391 34143 31087 30698 27968 )
-lengths=( 5 10 15 20 25 30 50 100 )
+lengths=( 1000 )
 
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
@@ -46,7 +46,7 @@ for sd in "${seeds[@]}"; do
         --tag experiment-$TAG \
         --seed $sd \
         --port $PORT \
-        --num-shards 2 \
+        --num-shards 1 \
         --epochs 5000 \
         --stop-at-loss 0.001 \
         --timeout 42840 \
@@ -60,7 +60,8 @@ for sd in "${seeds[@]}"; do
         --optimizer adam \
         --learning-rate 0.01 \
         --batch-size 128"
-    srun --pty -p skylake --time 2:00:00 --ntasks 1 --cpus-per-task 4 --threads-per-core 1 bash -c "$cmd"
+    #srun --pty -p skylake --time 2:00:00 --ntasks 1 --cpus-per-task 4 --threads-per-core 1 bash -c "$cmd"
+    bash -c "$cmd"
     
     if  [[ $? -eq 0 ]] ; then
         touch "$DONEFILE"    

@@ -52,10 +52,10 @@ for lr in "${lrs[@]}"; do
         --epochs 5000 \
         train \
         --dataset $dataset \
-        --workspace 5 \
+        --workspace 6 \
         --stages 2 \
         --order 2 \
-        --degree 3 \
+        --degree 2 \
         --optimizer adam \
         --learning-rate $lr \
         --batch-size 32

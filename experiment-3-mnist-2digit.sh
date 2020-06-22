@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # mnist01 or mnist36
 
-seeds=( 2342 2532 1512 )
-lrs=( 0.3 0.1 0.03 0.01 0.003 )
-dgs=( 3 )
+seeds=( 1 2 3 4 5 )
+lrs=( 0.3 0.1 0.03 0.01 )
+dgs=( 2 3 )
 
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
@@ -20,6 +20,7 @@ sleep $[ ($RANDOM % 40) + 1 ]s
 
 
 PORT=27777
+SEED=20042
 
 
 for sd in "${seeds[@]}"; do
@@ -27,6 +28,8 @@ for lr in "${lrs[@]}"; do
 for dg in "${dgs[@]}"; do
     # increment port in case multiple runs on same machine
     ((PORT++))
+    # increment actual seed
+    ((SEED++))
 
     TAG="$DATASET-$sd-$lr-$dg"
 
@@ -52,7 +55,7 @@ for dg in "${dgs[@]}"; do
     echo "running $TAG"
     OMP_NUM_THREADS=2 ./main.py \
         --tag experiment-$TAG \
-        --seed $sd \
+        --seed $SEED \
         --port $PORT \
         --num-shards 2 \
         --epochs 5000 \
@@ -62,9 +65,12 @@ for dg in "${dgs[@]}"; do
         --stages 2 \
         --order 2 \
         --degree $dg \
-        --optimizer adam \
+        --optimizer lbfgs \
         --learning-rate $lr \
-        --batch-size 50
+        --batch-size 50 \
+        --initial-bias-spread 0.1 \
+        --initial-weights-spread 0.1 \
+        --initial-unitaries-spread 0.1 
     
     if  [[ $? -eq 0 ]] ; then
         touch "$DONEFILE"    

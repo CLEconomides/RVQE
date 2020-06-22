@@ -625,7 +625,7 @@ if __name__ == "__main__":
         "--optimizer",
         metavar="OPT",
         type=str,
-        default="rmsprop",
+        default="adam",
         help="optimizer; one of sgd, adam or rmsprop",
     )
     parser_train.add_argument(

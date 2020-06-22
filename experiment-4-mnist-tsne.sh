@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # mnist 8 digits
 
-seeds=( 100 101 102 103 104 105 )
-datasets=( "mnist-tsne-d2-r2" "mnist-tsne-d2-r3" "mnist-tsne-d2-r4" "mnist-tsne-d2-r5" "mnist-tsne-d3-r2" "mnist-tsne-d3-r3" "mnist-tsne-d3-r4" "mnist-tsne-d3-r5" )
-lrs=( 0.3 0.1 0.03 0.01 )
+seeds=( 1000 1010 1020 1030 1040 1050 1060 1070 )
+datasets=( "mnist-tsne-d2-r4" "mnist-tsne-d3-r3" )
+lrs=( 0.03 0.01 )
 
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"
@@ -49,10 +49,10 @@ for lr in "${lrs[@]}"; do
         --seed $sd \
         --port $PORT \
         --num-shards 2 \
-        --epochs 5000 \
+        --epochs 10000 \
         train \
         --dataset $dataset \
-        --workspace 6 \
+        --workspace 7 \
         --stages 2 \
         --order 2 \
         --degree 2 \

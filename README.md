@@ -5,7 +5,7 @@
 The code requires only a rudimentary pytorch/tensorboard installation; training is (so far) only done on the CPU, so no CUDA setup is required.
 Further packages required:
 
-    pip install colorful
+    pip install colorful pandas
 
 Optional packages:
 

@@ -277,7 +277,7 @@ def test_rvqe_batching(capsys):
         measured_seq_manual = torch.stack(measured_seq)
 
         # compare
-        assert equal(probs_batch, probs_manual)
+        assert approx_equal(probs_batch, probs_manual)
         assert equal(measured_seq_batch, measured_seq_manual)
 
 

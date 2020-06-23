@@ -3,7 +3,7 @@
 
 seeds=( 1 2 3 4 5 )
 lrs=( 0.3 0.1 0.03 0.01 )
-dgs=( 2 3 )
+dgs=( 2 )
 
 LOCKFILEFOLDER="./locks"
 mkdir -p "$LOCKFILEFOLDER"

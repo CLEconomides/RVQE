@@ -10,7 +10,7 @@ mkdir -p "$LOCKFILEFOLDER"
 
 DATASET=$1
 
-if [[ "$DATASET" != "mnist01" && "$DATASET" != "mnist01-ds" && "$DATASET" != "mnist36" && "$DATASET" != "mnist36-ds" && "$DATASET" != "mnist01-gen" ]] ; then
+if [[ "$DATASET" != "mnist01" && "$DATASET" != "mnist01-ds" && "$DATASET" != "mnist36" && "$DATASET" != "mnist36-ds" && "$DATASET" != "mnist01-gen" && "$DATASET" != "mnist-even-odd" ]] ; then
     echo "invalid dataset $DATASET"
     exit 1
 fi
@@ -53,24 +53,24 @@ for dg in "${dgs[@]}"; do
     
     # run test
     echo "running $TAG"
-    OMP_NUM_THREADS=2 ./main.py \
+    cmd="OMP_NUM_THREADS=2 ./main.py \
         --tag experiment-$TAG \
         --seed $SEED \
         --port $PORT \
         --num-shards 2 \
         --epochs 5000 \
+        --timeout 42300 \
         train \
         --dataset $DATASET \
-        --workspace 6 \
+        --workspace 8 \
         --stages 2 \
         --order 2 \
         --degree $dg \
-        --optimizer lbfgs \
+        --optimizer adam \
         --learning-rate $lr \
-        --batch-size 50 \
-        --initial-bias-spread 0.1 \
-        --initial-weights-spread 0.1 \
-        --initial-unitaries-spread 0.1 
+        --batch-size 50"
+        
+    srun --pty -p skylake --time 12:00:00 --ntasks 1 --cpus-per-task 4 --threads-per-core 1 bash -c "$cmd"
     
     if  [[ $? -eq 0 ]] ; then
         touch "$DONEFILE"    

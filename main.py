@@ -373,7 +373,9 @@ def train(shard: int, args):
                     targets = environment.gather(targets)
                     min_postsel_prob = environment.gather(min_postsel_prob)
                     measured_sequences = environment.gather(measured_sequences)
-                    validation_loss = environment.all_reduce(validation_loss, ReduceOp.SUM) / args.num_shards
+                    validation_loss = (
+                        environment.all_reduce(validation_loss, ReduceOp.SUM) / args.num_shards
+                    )
 
                     if shard == 0:
                         sentences = torch.cat(sentences)
@@ -469,7 +471,9 @@ def train(shard: int, args):
                 # ENDWITH torch.no_grad
 
                 if args.stop_at_loss is not None and args.stop_at_loss > validation_loss:
-                    print(f"stopping training because validation_loss={validation_loss} < args.stop_at_loss={args.stop_at_loss}")
+                    print(
+                        f"stopping training because validation_loss={validation_loss} < args.stop_at_loss={args.stop_at_loss}"
+                    )
                     break  # breaks out of training loop
 
             # ENDIF validation

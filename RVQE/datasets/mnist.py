@@ -270,6 +270,46 @@ class DataMNIST8ds_lrg(DataMNISTBase):
         )
 
 
+# EVEN
+
+
+class DataMNIST_EvenOdd(DataMNISTBase):
+    def __init__(self, shard: int, **kwargs):
+        super().__init__(
+            shard,
+            digits=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+            scanlines=[0, 1],
+            deskewed=False,
+            large=False,
+            **kwargs,
+        )
+        self.LABELS = [[int_to_bitword(d % 2, width=self.num_scanlines)] for d in self.digits]
+        self.label_length = 1  # even and odd are just one bit
+
+        # last pixels contain the label
+        self.TARGETS = [
+            torch.cat(
+                (
+                    torch.zeros(self.SEQ_LEN - self.label_length, self.num_scanlines),
+                    torch.tensor(label).float(),
+                )
+            )
+            .int()
+            .tolist()
+            for label in self.LABELS
+        ]
+
+    def to_human(self, target: torch.LongTensor, offset: int = 0) -> str:
+        if offset == 0 and not target.tolist() in self.TARGETS:
+            return self._print_as_images(target)
+        else:
+            label = target[-self.label_length :].tolist()
+            if label in self.LABELS:
+                return colorful.bold(["even", "odd"][self.LABELS.index(label)])
+            else:
+                return colorful.bold("?")
+
+
 # GENERATIVE
 
 

@@ -164,11 +164,13 @@ class DataMNISTtSNE_d3r2(DataMNISTtSNEBase):
             shard, digits=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], resolution=2, dims=3, **kwargs
         )
 
+
 class DataMNISTtSNE_d3r3(DataMNISTtSNEBase):
     def __init__(self, shard: int, **kwargs):
         super().__init__(
             shard, digits=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], resolution=3, dims=3, **kwargs
         )
+
 
 class DataMNISTtSNE_d3r4(DataMNISTtSNEBase):
     def __init__(self, shard: int, **kwargs):

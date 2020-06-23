@@ -39,6 +39,7 @@ all_datasets = {
     "mnist-tsne-d3-r4": DataMNISTtSNE_d3r4,
     "mnist-tsne-d3-r5": DataMNISTtSNE_d3r5,
     "mnist-tsne-d3-r8": DataMNISTtSNE_d3r8,
+    "mnist-even-odd": DataMNIST_EvenOdd,
     "mnist01-gen": DataMNIST01_Gen,
     "shakespeare": DataShakespeare,
     "dna": DataDNA,

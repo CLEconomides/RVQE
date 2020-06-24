@@ -3,14 +3,18 @@
 ## Setup
 
 The code requires only a rudimentary pytorch/tensorboard installation; training is (so far) only done on the CPU, so no CUDA setup is required.
-Further packages required:
+For instance, the following command installs the basic necessities.
+
+    pip install torch tensorboard
+
+Further packages required
 
     pip install colorful pandas
 
 Optional packages:
 
-    pip install pytest                       # for tests
-    pip install jupyter matplotlib opentsne  # to run jupyter notebook for MNIST data augmentation
+    pip install pytest                                   # for tests
+    pip install jupyter matplotlib opentsne umap-learn   # to run jupyter notebooks for MNIST data augmentation
 
 
 ## Folder Structure
@@ -47,7 +51,7 @@ Optional packages:
     ./main.py train     # executes a simple default training task (default parameters from --help)
 
 
-For instance, to train the t-SNE augmented MNIST dataset on an 8-core machine, execute the following:
+For instance, to train the umap augmented MNIST dataset on an 8-core machine, execute the following:
 
     OMP_NUM_THREADS=2 ./main.py \
         --tag experiment-test \
@@ -56,7 +60,7 @@ For instance, to train the t-SNE augmented MNIST dataset on an 8-core machine, e
         --num-shards 4 \
         --epochs 10000 \
         train \
-        --dataset mnist-tsne \
+        --dataset mnist-umap-d2-r4 \
         --workspace 6 \
         --stages 2 \
         --order 2 \

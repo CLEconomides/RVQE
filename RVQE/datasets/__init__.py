@@ -3,7 +3,7 @@ from .simple import DataSimpleSequences, DataSimpleQuotes
 from .elman import DataElmanXOR, DataElmanLetter
 from .mnist import *
 from .mnistpca import *
-from .mnisttsne import *
+from .mnistumap import *
 from .dna import *
 
 all_datasets = {
@@ -29,16 +29,21 @@ all_datasets = {
     "mnist-pca-r4-p2": DataMNISTPCA_r4p2,
     "mnist-pca-r4-p5": DataMNISTPCA_r4p5,
     "mnist-pca-r4-p8": DataMNISTPCA_r4p8,
-    "mnist-tsne-d2-r2": DataMNISTtSNE_d2r2,
-    "mnist-tsne-d2-r3": DataMNISTtSNE_d2r3,
-    "mnist-tsne-d2-r4": DataMNISTtSNE_d2r4,
-    "mnist-tsne-d2-r5": DataMNISTtSNE_d2r5,
-    "mnist-tsne-d2-r8": DataMNISTtSNE_d2r8,
-    "mnist-tsne-d3-r2": DataMNISTtSNE_d3r2,
-    "mnist-tsne-d3-r3": DataMNISTtSNE_d3r3,
-    "mnist-tsne-d3-r4": DataMNISTtSNE_d3r4,
-    "mnist-tsne-d3-r5": DataMNISTtSNE_d3r5,
-    "mnist-tsne-d3-r8": DataMNISTtSNE_d3r8,
+    "mnist-umap-d2-r2": DataMNISTumap_d2r2,
+    "mnist-umap-d2-r3": DataMNISTumap_d2r3,
+    "mnist-umap-d2-r4": DataMNISTumap_d2r4,
+    "mnist-umap-d2-r5": DataMNISTumap_d2r5,
+    "mnist-umap-d2-r8": DataMNISTumap_d2r8,
+    "mnist-umap-d3-r2": DataMNISTumap_d3r2,
+    "mnist-umap-d3-r3": DataMNISTumap_d3r3,
+    "mnist-umap-d3-r4": DataMNISTumap_d3r4,
+    "mnist-umap-d3-r5": DataMNISTumap_d3r5,
+    "mnist-umap-d3-r8": DataMNISTumap_d3r8,
+    "mnist-umap-d4-r2": DataMNISTumap_d4r2,
+    "mnist-umap-d4-r3": DataMNISTumap_d4r3,
+    "mnist-umap-d4-r4": DataMNISTumap_d4r4,
+    "mnist-umap-d4-r5": DataMNISTumap_d4r5,
+    "mnist-umap-d4-r8": DataMNISTumap_d4r8,
     "mnist-even-odd": DataMNIST_EvenOdd,
     "mnist01-gen": DataMNIST01_Gen,
     "shakespeare": DataShakespeare,

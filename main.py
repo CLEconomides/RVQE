@@ -121,7 +121,7 @@ class DistributedTrainingEnvironment:
         ret = tensor([0])
         if (timer() - self._time_start) > self.timeout:
             ret[:] = 1
-            self.broadcast(ret, 0)
+            self.broadcast(ret)
 
         self.synchronize()
 

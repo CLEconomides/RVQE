@@ -1,4 +1,6 @@
-from ..data import *
+import numpy as np
+
+from RVQE.data import *
 
 
 def constant_sentence(length: int, constant: Bitword) -> List[Bitword]:
@@ -7,6 +9,83 @@ def constant_sentence(length: int, constant: Bitword) -> List[Bitword]:
 
 def alternating_sentence(length: int, constants: List[Bitword]) -> List[Bitword]:
     return [constants[i % len(constants)] for i in range(length)]
+
+
+def int_to_bitstring_vector(integ, nn):
+    bitstring = bin(integ)[2:].rjust(nn, "0")
+    bitstring_vector = [int(letter) for letter in bitstring]
+    return bitstring_vector
+def min_max_normalisation(input_seq,nn):
+    """renormalize the different training sequences with the min-max method, but not
+    into an interval of [0,1] but into [0,2^n] of integers, so that they can be
+    represented as bitstrings"""
+
+    input_seq = np.array(input_seq)
+
+    max_val = np.max(input_seq)
+    min_val = np.min(input_seq)
+    return [[int_to_bitstring_vector(int(round(((i-min_val)*(2**nn-1)/(max_val-min_val)),0)),nn) for i in sequ] for sequ in input_seq]
+    # return [int_to_bitstring_vector(
+    #     int(round(((i - min_val) * (2 ** nn - 1) / (max_val - min_val)), 0)), nn) for i
+    #          in input_seq]
+
+# print([[i + j**2 for i in range(j,j+3)] for j in range(2)])
+# print(min_max_normalisation([[i + j**2 for i in range(3)] for j in range(2)],3))
+# print(min_max_normalisation([[1,2,3],[4,5,6],[7,8,8]],3))
+# print(min_max_normalisation([[0.1,0.2,0.3],[0.4,0.5,0.6],[0.7,0.8,0.8]],3))
+
+class QC_Finance_eval(DataFactory):
+    def __init__(self, input_qubits: int, *args, **kwargs):
+        self.input_qubits = input_qubits
+        super().__init__(*args, **kwargs)
+
+        #import data from csv file?
+        self.sentence_length = 8
+        input = [[i + 1 for i in range(self.sentence_length)]]
+
+        self.input = input
+
+        sentences = min_max_normalisation(input, self.input_qubits)
+
+        self._batches_data = self._sentences_to_batches(sentences, targets=sentences)
+
+    @property
+    def _batches(self) -> List[Batch]:
+        return self._batches_data
+
+    @property
+    def input_width(self) -> int:
+        return self.input_qubits
+
+    def to_human(self, target: torch.LongTensor, offset: int = 0) -> str:
+        # for word in target:
+        #     print('word', word)
+        return "  " * offset + " ".join([str(bitword_to_int(word)) for word in target])
+
+class QC_Finance_train(DataFactory):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        #also import data from csv file?
+
+        input_seq = [[i for i in range(self.sentence_length)] for j in range(self.batch_size)]
+
+        self.input = input_seq
+
+        sentences = min_max_normalisation(input_seq, 3)
+
+        self._batches_data = self._sentences_to_batches(sentences, targets=sentences)
+
+    @property
+    def _batches(self) -> List[Batch]:
+        return self._batches_data
+
+    @property
+    def input_width(self) -> int:
+        return 3
+
+    def to_human(self, target: torch.LongTensor, offset: int = 0) -> str:
+        return "  " * offset + " ".join([str(bitword_to_int(word)) for word in target])
 
 
 class DataSimpleSequences(DataFactory):
@@ -34,6 +113,7 @@ class DataSimpleSequences(DataFactory):
         return "  " * offset + " ".join([str(bitword_to_int(word)) for word in target])
 
 
+#print(DataSimpleSequences._batches)
 class DataSimpleQuotes(DataFactory):
     """
         Larger memoization task; we give advice by postselecting on consonants

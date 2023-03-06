@@ -1,1 +1,1 @@
-from . import quantum, model, data, datasets
+from RVQE import quantum, model, data, datasets

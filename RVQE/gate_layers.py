@@ -1,6 +1,6 @@
 from typing import Union, List, Tuple
 
-from .quantum import *
+from RVQE.quantum import *
 import torch
 from torch import nn, tensor
 

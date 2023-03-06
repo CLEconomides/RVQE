@@ -38,9 +38,7 @@ class BitFlipLayer(CompoundLayer):
 class PostselectManyLayer(CompoundLayer):
     def __init__(self, target_lanes: List[int], on: List[int]):
         super().__init__()
-        self.gates = nn.Sequential(
-            *[PostselectLayer(t, w) for t, w in zip(target_lanes, on)]
-        )
+        self.gates = nn.Sequential(*[PostselectLayer(t, w) for t, w in zip(target_lanes, on)])
 
 
 class UnitaryLayer(CompoundLayer):
@@ -67,9 +65,9 @@ class QuantumNeuronLayer(CompoundLayer):
         **kwargs,
     ):
         """
-        workspace from which to take values, write onto outlane; and use ancillas for intermediate computation
-        order is implicitly deduced from number of ancillas
-        conditions: outlane _can_ be within workspace, but not in ancillas; and workspace and ancillas have to be disjoint
+            workspace from which to take values, write onto outlane; and use ancillas for intermediate computation
+            order is implicitly deduced from number of ancillas
+            conditions: outlane _can_ be within workspace, but not in ancillas; and workspace and ancillas have to be disjoint
         """
         assert outlane not in ancillas and (
             set(workspace).isdisjoint(ancillas)
@@ -92,9 +90,7 @@ class QuantumNeuronLayer(CompoundLayer):
         for idcs in index_sets_without(workspace, [outlane], degree):
             self._param_gates.append(crYLayer(idcs, ancillas[0]))
         self._param_gates.append(rYLayer(ancillas[0], initial_θ=bias))
-        self._param_gates.append(
-            rYLayer(ancillas[0], initial_θ=nn.Parameter(tensor(0.0)))
-        )
+        self._param_gates.append(rYLayer(ancillas[0], initial_θ=nn.Parameter(tensor(0.0))))
 
         # assemble circuit gate layers
         _gates = []
@@ -114,9 +110,7 @@ class QuantumNeuronLayer(CompoundLayer):
 
         return static_gates if not dagger else _T_gate_list(static_gates)
 
-    def _append_gates_recursive(
-        self, _gates: List[GateLayer], recidx: int, dagger: bool
-    ):
+    def _append_gates_recursive(self, _gates: List[GateLayer], recidx: int, dagger: bool):
         if recidx == 0:
             _gates += self.param_gates(dagger=False)
             _gates += self.static_gates(0, dagger)
@@ -137,11 +131,10 @@ class QuantumNeuronLayer(CompoundLayer):
 
 def bitword_tensor(width: int) -> torch.LongTensor:
     """
-    returns a tensor in which every row is the binary representation of the row index
+        returns a tensor in which every row is the binary representation of the row index
     """
     return tensor(
-        [[bool(b) for b in int_to_bitword(i, width)] for i in range(2**width)],
-        dtype=bool,
+        [[bool(b) for b in int_to_bitword(i, width)] for i in range(2 ** width)], dtype=bool
     )
 
 
@@ -151,9 +144,9 @@ import functools
 # @functools.lru_cache(maxsize=10)
 def subset_index_tensor(width: int, degree: int) -> torch.BoolTensor:
     """
-    returns a tensor in which every row is a list of boolean flags that indicate
-    whether the row, written in binary, has all those bits set to True that
-    appear in the powerset of subsets of length 1...degree
+        returns a tensor in which every row is a list of boolean flags that indicate
+        whether the row, written in binary, has all those bits set to True that
+        appear in the powerset of subsets of length 1...degree
     """
     bwt = bitword_tensor(width)
     setidcs = [list(idcs) for idcs in powerset(range(width), 1, degree + 1)]
@@ -162,7 +155,7 @@ def subset_index_tensor(width: int, degree: int) -> torch.BoolTensor:
 
 class FastQuantumNeuronLayer(nn.Module):
     """
-    Mimics the action of a QuantumNeuronLayer, but with a direct implementation
+        Mimics the action of a QuantumNeuronLayer, but with a direct implementation
     """
 
     def __init__(
@@ -175,9 +168,9 @@ class FastQuantumNeuronLayer(nn.Module):
         **kwargs,
     ):
         """
-        workspace from which to take values, write onto outlane;
-        instead of ancilla list we give the order explicitly
-        conditions: outlane _can_ be within workspace
+            workspace from which to take values, write onto outlane;
+            instead of ancilla list we give the order explicitly
+            conditions: outlane _can_ be within workspace
         """
         assert order >= 1, "order"
         assert len(workspace) >= 1, "workspace has to be nonempty"
@@ -203,8 +196,8 @@ class FastQuantumNeuronLayer(nn.Module):
     def _sin_cos_op(self) -> Tuple[Ket, Ket]:
         ten = 0.5 * ((self._ten * self.φ).sum(axis=1) + self.θ + self.bias)
 
-        sin_op = ten.sin() ** (2**self.order)
-        cos_op = ten.cos() ** (2**self.order)
+        sin_op = ten.sin() ** (2 ** self.order)
+        cos_op = ten.cos() ** (2 ** self.order)
 
         shape = [2] * len(self.sourcelanes)
         return sin_op.reshape(*shape), cos_op.reshape(*shape)
@@ -227,9 +220,7 @@ class FastQuantumNeuronLayer(nn.Module):
 
         # stack and permute outlane to its original place
         return normalize(
-            mark_batch_like(
-                kob, torch.stack([new_kob_0, new_kob_1]).transpose(0, outlane)
-            )
+            mark_batch_like(kob, torch.stack([new_kob_0, new_kob_1]).transpose(0, outlane))
         )
 
     @staticmethod

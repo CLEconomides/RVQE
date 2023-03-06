@@ -1,12 +1,15 @@
 from .shakespeare import DataShakespeare
-from .simple import DataSimpleSequences, DataSimpleQuotes
+from .simple import DataSimpleSequences, DataSimpleQuotes, QC_Finance_train, QC_Finance_eval
 from .elman import DataElmanXOR, DataElmanLetter
 from .mnist import *
 from .mnistpca import *
 from .mnistumap import *
 from .dna import *
 
+#: ,
 all_datasets = {
+    "QC-Finance-eval": QC_Finance_eval,
+    "QC-Finance-train": QC_Finance_train,
     "simple-seq": DataSimpleSequences,
     "simple-quotes": DataSimpleQuotes,
     "elman-xor": DataElmanXOR,

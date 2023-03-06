@@ -42,6 +42,7 @@ def int_to_bitword_str(label: int, width: int) -> str:
     return bin(label)[2:].rjust(width, "0")
 
 
+
 def int_to_bitword(label: int, width: Optional[int] = None) -> Bitword:
     if width is None:
         width = math.ceil(math.log2(label)) if label != 0 else 1
@@ -115,6 +116,7 @@ class DataFactory(ABC):
         self.shard = shard
         self.num_shards = num_shards
         self.batch_size = batch_size
+
         self.sentence_length = sentence_length
         # initial offset dependent on shard
         self._index = self.shard
@@ -125,6 +127,7 @@ class DataFactory(ABC):
 
     def next_batch(self, step: int, stage: TrainingStage) -> Batch:
         # extract batch and advance pointer
+        # print('_batches',self._batches)
         batch = self._batches[self._index]
         self._index += self.num_shards
         self._index %= len(self._batches)
@@ -136,11 +139,14 @@ class DataFactory(ABC):
     ) -> List[Batch]:
         targets = tensor(targets)
         sentences = tensor(sentences)
+        # print('pre targets', targets.size())
+        print('batch size', self.batch_size)
 
         # split into batch-sized chunks
         targets = torch.split(targets, self.batch_size)
         sentences = torch.split(sentences, self.batch_size)
-
+        # print('targettss', targets)
+        # print('sentencies',sentences)
         return list(zip(sentences, targets))
 
     def _sentences_to_batch(

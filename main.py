@@ -382,7 +382,9 @@ def train(shard: int, args):
                         targets = torch.cat(targets)
                         measured_sequences = torch.cat(measured_sequences)
                         min_postsel_prob = torch.stack(min_postsel_prob).min()
-
+                        print('dataste', len(measured_sequences))
+                        print(args.num_shards)
+                        print(args.batch_size)
                         if not dataset.overrides_batch_size:
                             assert (
                                 len(measured_sequences) == args.num_shards * args.batch_size
@@ -508,6 +510,55 @@ def train(shard: int, args):
         print(f"🆗  DONE. Written final checkpoint to {checkpoint}")
 
 
+def evaluate(args, shard=0):
+    with DistributedTrainingEnvironment(shard, args) as environment:
+        store = environment.load_checkpoint(args.filename)
+        original_args = store["_original_args"]
+        print('orig', original_args)
+        original_args.dataset = "QC-Finance-eval"
+        print('orig datase', original_args.dataset)
+
+        dataset = datasets.all_datasets[original_args.dataset](shard=0, input_qubits = 3,
+                                                               **vars(original_args))
+
+        rvqe = DistributedDataParallel(
+            RVQE(
+                workspace_size=original_args.workspace,
+                input_size=dataset.input_width,
+                stages=original_args.stages,
+                order=original_args.order,
+                degree=original_args.degree,
+                bias=original_args.initial_bias,
+            )
+        )
+
+        rvqe.load_state_dict(store["model_state_dict"])
+        hallo = True
+        with torch.no_grad():
+            all_measured_sequences = []
+            for eval_ in range(5):
+                sentences, targets = dataset.next_batch(eval_,
+                                                        data.TrainingStage.VALIDATE)
+                # print('sen',sentences[0])
+                if hallo:
+                    print('sentences', dataset.to_human(sentences[0]))
+                    hallo=False
+
+                # run entire batch through the network without postselecting measurements
+                measured_probs, measured_sequences, min_postsel_prob = rvqe(
+                    sentences[0], targets[0],
+                    postselect_measurement=dataset.ignore_output_at_step
+                )
+                # print('vector measured sequ', measured_sequences)
+                print('measured to human',dataset.to_human(measured_sequences))
+                # for j,i in enumerate(measured_sequences):
+                #     print('i', i)
+                #     print('measured_sequences', dataset.to_human(i))
+                #     print('j,',j)
+                all_measured_sequences.append(measured_sequences)
+
+    return all_measured_sequences
+
 def command_train(args):
     # validate
     assert args.dataset in datasets.all_datasets, "invalid dataset"
@@ -554,7 +605,7 @@ if __name__ == "__main__":
         "--num-shards",
         metavar="N",
         type=int,
-        default=2,
+        default=1,
         help="number of cores to use for parallel processing",
     )
     parser.add_argument(
@@ -565,7 +616,7 @@ if __name__ == "__main__":
         help="number of validation samples to draw each 10 epochs",
     )
     parser.add_argument(
-        "--tag", metavar="TAG", type=str, default="", help="tag for checkpoints and logs"
+        "--tag", metavar="TAG", type=str, default="Hallo Trial", help="tag for checkpoints and logs"
     )
     parser.add_argument(
         "--epochs", metavar="EP", type=int, default=5000, help="number of learning epochs"
@@ -592,6 +643,8 @@ if __name__ == "__main__":
         help="random seed for parameter initialization",
     )
 
+    #parser.set_defaults(func=command_train)
+
     subparsers = parser.add_subparsers(help="available commands")
 
     parser_train = subparsers.add_parser(
@@ -612,18 +665,19 @@ if __name__ == "__main__":
         "--dataset",
         metavar="D",
         type=str,
-        default="simple-seq",
+        default="QC-Finance-train",
+        #default="simple-seq",
         help=f"dataset; choose between {', '.join(datasets.all_datasets.keys())}",
     )
     parser_train.add_argument(
         "--sentence-length",
         metavar="SL",
         type=int,
-        default=20,
+        default=8,
         help="sentence length for data generators",
     )
     parser_train.add_argument(
-        "--batch-size", metavar="B", type=int, default=1, help="batch size",
+        "--batch-size", metavar="B", type=int, default=2, help="batch size",
     )
     parser_train.add_argument(
         "--optimizer",
@@ -675,7 +729,11 @@ if __name__ == "__main__":
         "resume", formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser_resume.set_defaults(func=command_resume)
-    parser_resume.add_argument("filename", type=str, help="checkpoint filename")
+    parser_resume.add_argument("--filename",
+                               type=str,
+                               default=r"C:\Users\Constantin\PycharmProjects\RVQE\checkpoints\checkpoint--Hallo Trial-QC-Finance-Test--933201-final-2023-02-28--15-46-34.tar",
+                               #default=r"C:\Users\Constantin\PycharmProjects\RVQE\runs\Feb28_14-58-06_DESKTOP-72RS9E3-Hallo Trial-QC-Finance-Test--933201\1677595594.5719838\events.out.tfevents.1677592686.DESKTOP-72RS9E3.6680.0",
+                               help="checkpoint filename")
     parser_resume.add_argument(
         "--override-learning-rate",
         metavar="LR",
@@ -686,6 +744,16 @@ if __name__ == "__main__":
     parser_resume.add_argument(
         "--override-batch-size", metavar="LR", type=int, default=None, help="batch size",
     )
+
+    parser_eval = subparsers.add_parser(
+        "evaluate", formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser_eval.set_defaults(func=evaluate)
+    parser_eval.add_argument("--filename",
+                               type=str,
+                               default=r"C:\Users\Constantin\PycharmProjects\RVQE\checkpoints\checkpoint--Hallo Trial-QC-Finance-Test--933201-final-2023-02-28--15-46-34.tar",
+                               #default=r"C:\Users\Constantin\PycharmProjects\RVQE\runs\Feb28_14-58-06_DESKTOP-72RS9E3-Hallo Trial-QC-Finance-Test--933201\1677595594.5719838\events.out.tfevents.1677592686.DESKTOP-72RS9E3.6680.0",
+                               help="checkpoint filename")
 
     args = parser.parse_args()
     if not hasattr(args, "func"):

@@ -1,6 +1,6 @@
 import pytest
 
-from .quantum import *
+from RVQE.quantum import *
 
 
 # QUANTUM
@@ -47,7 +47,7 @@ def test_batching():
 
 
 # GATE LAYERS
-from .gate_layers import *
+from RVQE.gate_layers import *
 
 
 def test_gates():
@@ -208,7 +208,7 @@ def test_slow_fast_qn_equivalence(capsys):
 
 
 # RVQE
-from .model import *
+from RVQE.model import *
 import sys
 
 
@@ -282,7 +282,7 @@ def test_rvqe_batching(capsys):
 
 
 # DATA
-from .data import *
+from RVQE.data import *
 
 
 def test_data():

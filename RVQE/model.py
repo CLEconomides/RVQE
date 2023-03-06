@@ -1,14 +1,14 @@
 from typing import Tuple, List, Dict, Optional, Union, Callable
 
-from .compound_layers import (
+from RVQE.compound_layers import (
     UnitaryLayer,
     QuantumNeuronLayer,
     FastQuantumNeuronLayer,
     BitFlipLayer,
     PostselectManyLayer,
 )
-from .quantum import *
-from .data import zip_with_offset, int_to_bitword, bitword_to_int, Bitword
+from RVQE.quantum import *
+from RVQE.data import zip_with_offset, int_to_bitword, bitword_to_int, Bitword
 
 import torch
 from torch import nn

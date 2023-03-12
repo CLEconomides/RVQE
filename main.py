@@ -581,182 +581,252 @@ def command_resume(args):
     else:
         torch.multiprocessing.spawn(train, args=(args,), nprocs=args.num_shards, join=True)
 
+modes = ["train", "resume", "evaluate"]
+arg_parser_dict = {"mode": modes[0],
+                   "port":12335,
+                   "num_shards":1,
+                   "num_validation_samples":2,
+                   "tag":"Hallo Trial",
+                   "epochs":5000,
+                   "timeout":None,
+                   "stop_at_loss":None,
+                   "seed":82727,
+                   "workspace":3,
+                   "stages":2,
+                   "order":2,
+                   "degree" : 2,
+                   "dataset":"simple-seq",
+                   "sentence_length":8,
+                   "batch_size":2,
+                   "optimizer":"adam",
+                   "learning_rate":0.003,
+                   "weight_decay":0,
+                   "initial_bias":1.570796,
+                   "initial_bias_spread":0.1,
+                   "initial_weights_spread":0.01,
+                   "initial_unitaries_spread":0.01,
+                   "filename":r"C:\Users\Constantin\PycharmProjects\RVQE\checkpoints\checkpoint--Hallo Trial-QC-Finance-Test--933201-final-2023-02-28--15-46-34.tar",
+                   "override_learning_rate":None,
+                   }
+
+
+class arg_parser:
+    def __init__(self,dictionary):
+        self.mode = dictionary["mode"]
+        self.port = dictionary["port"]
+        self.num_shards = dictionary["num_shards"]
+        self.num_validation_samples = dictionary["num_validation_samples"]
+        self.tag = dictionary["tag"]
+        self.epochs = dictionary["epochs"]
+        self.timeout = dictionary["timeout"]
+        self.stop_at_loss = dictionary["stop_at_loss"]
+        self.seed = dictionary["seed"]
+        if self.mode == "train":
+            self.workspace = dictionary["workspace"]
+            self.stages = dictionary["stages"]
+            self.order = dictionary["order"]
+            self.degree = dictionary["degree"]
+            self.dataset = dictionary["dataset"]
+            self.sentence_length = dictionary["sentence_length"]
+            self.batch_size = dictionary["batch_size"]
+            self.optimizer = dictionary["optimizer"]
+            self.learning_rate = dictionary["learning_rate"]
+            self.weight_decay = dictionary["weight_decay"]
+            self.initial_bias = dictionary["initial_bias"]
+            self.initial_bias_spread = dictionary["initial_bias_spread"]
+            self.initial_weights_spread = dictionary["initial_weights_spread"]
+            self.initial_unitaries_spread = dictionary["initial_unitaries_spread"]
+        elif self.mode == "resume":
+            self.filename = dictionary["filename"]
+            self.override_learning_rate = dictionary["override_learning_rate"]
+        elif self.mode == "evaluate":
+            self.filename = dictionary["filename"]
+
+
+
 
 if __name__ == "__main__":
-
-    title = " RVQE Trainer "
-    print(
-        colorful.background("▄" * len(title))
-        + "\n"
-        + colorful.bold_white_on_background(title)
-        + "\n"
-        + colorful.background("▀" * len(title))
-    )
-
-    import argparse
-
-    parser = argparse.ArgumentParser(
-        description="RVQE Training Script", formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    parser.add_argument(
-        "--port", metavar="P", type=int, default=12335, help="port for distributed computing",
-    )
-    parser.add_argument(
-        "--num-shards",
-        metavar="N",
-        type=int,
-        default=1,
-        help="number of cores to use for parallel processing",
-    )
-    parser.add_argument(
-        "--num-validation-samples",
-        metavar="VALS",
-        type=int,
-        default=2,
-        help="number of validation samples to draw each 10 epochs",
-    )
-    parser.add_argument(
-        "--tag", metavar="TAG", type=str, default="Hallo Trial", help="tag for checkpoints and logs"
-    )
-    parser.add_argument(
-        "--epochs", metavar="EP", type=int, default=5000, help="number of learning epochs"
-    )
-    parser.add_argument(
-        "--timeout",
-        metavar="TO",
-        type=int,
-        default=None,
-        help="timeout in s after what time to interrupt",
-    )
-    parser.add_argument(
-        "--stop-at-loss",
-        metavar="SL",
-        type=float,
-        default=None,
-        help="stop at this validation loss",
-    )
-    parser.add_argument(
-        "--seed",
-        metavar="SEED",
-        type=int,
-        default=82727,
-        help="random seed for parameter initialization",
-    )
-
-    #parser.set_defaults(func=command_train)
-
-    subparsers = parser.add_subparsers(help="available commands")
-
-    parser_train = subparsers.add_parser(
-        "train", formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    parser_train.set_defaults(func=command_train)
-    parser_train.add_argument(
-        "--workspace", metavar="W", type=int, default=3, help="qubits to use as workspace",
-    )
-    parser_train.add_argument("--stages", metavar="S", type=int, default=2, help="RVQE cell stages")
-    parser_train.add_argument(
-        "--order", metavar="O", type=int, default=2, help="order of activation function"
-    )
-    parser_train.add_argument(
-        "--degree", metavar="O", type=int, default=2, help="degree of quantum neuron"
-    )
-    parser_train.add_argument(
-        "--dataset",
-        metavar="D",
-        type=str,
-        default="QC-Finance-train",
-        #default="simple-seq",
-        help=f"dataset; choose between {', '.join(datasets.all_datasets.keys())}",
-    )
-    parser_train.add_argument(
-        "--sentence-length",
-        metavar="SL",
-        type=int,
-        default=8,
-        help="sentence length for data generators",
-    )
-    parser_train.add_argument(
-        "--batch-size", metavar="B", type=int, default=2, help="batch size",
-    )
-    parser_train.add_argument(
-        "--optimizer",
-        metavar="OPT",
-        type=str,
-        default="adam",
-        help="optimizer; one of sgd, adam or rmsprop",
-    )
-    parser_train.add_argument(
-        "--learning-rate",
-        metavar="LR",
-        type=float,
-        default="0.003",
-        help="learning rate for optimizer",
-    )
-    parser_train.add_argument(
-        "--weight-decay", metavar="WD", type=float, default=0.0, help="weight decay for optimizer",
-    )
-    parser_train.add_argument(
-        "--initial-bias",
-        metavar="IB",
-        type=float,
-        default=1.570796,
-        help="initial bias for quantum neuron",
-    )
-    parser_train.add_argument(
-        "--initial-bias-spread",
-        metavar="IBσ ",
-        type=float,
-        default=0.1,
-        help="initial bias spread for quantum neuron",
-    )
-    parser_train.add_argument(
-        "--initial-weights-spread",
-        metavar="IWσ",
-        type=float,
-        default=0.01,
-        help="initial weights spread for quantum neuron",
-    )
-    parser_train.add_argument(
-        "--initial-unitaries-spread",
-        metavar="IUσ",
-        type=float,
-        default=0.01,
-        help="initial spread for unitary layers",
-    )
-
-    parser_resume = subparsers.add_parser(
-        "resume", formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    parser_resume.set_defaults(func=command_resume)
-    parser_resume.add_argument("--filename",
-                               type=str,
-                               default=r"C:\Users\Constantin\PycharmProjects\RVQE\checkpoints\checkpoint--Hallo Trial-QC-Finance-Test--933201-final-2023-02-28--15-46-34.tar",
-                               #default=r"C:\Users\Constantin\PycharmProjects\RVQE\runs\Feb28_14-58-06_DESKTOP-72RS9E3-Hallo Trial-QC-Finance-Test--933201\1677595594.5719838\events.out.tfevents.1677592686.DESKTOP-72RS9E3.6680.0",
-                               help="checkpoint filename")
-    parser_resume.add_argument(
-        "--override-learning-rate",
-        metavar="LR",
-        type=float,
-        default=None,
-        help="learning rate for optimizer",
-    )
-    parser_resume.add_argument(
-        "--override-batch-size", metavar="LR", type=int, default=None, help="batch size",
-    )
-
-    parser_eval = subparsers.add_parser(
-        "evaluate", formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    parser_eval.set_defaults(func=evaluate)
-    parser_eval.add_argument("--filename",
-                               type=str,
-                               default=r"C:\Users\Constantin\PycharmProjects\RVQE\checkpoints\checkpoint--Hallo Trial-QC-Finance-Test--933201-final-2023-02-28--15-46-34.tar",
-                               #default=r"C:\Users\Constantin\PycharmProjects\RVQE\runs\Feb28_14-58-06_DESKTOP-72RS9E3-Hallo Trial-QC-Finance-Test--933201\1677595594.5719838\events.out.tfevents.1677592686.DESKTOP-72RS9E3.6680.0",
-                               help="checkpoint filename")
-
-    args = parser.parse_args()
-    if not hasattr(args, "func"):
-        parser.print_help()
-    else:
-        args.func(args)
+    arguments = arg_parser(arg_parser_dict)
+    if arguments.mode == "train":
+        command_train(arguments)
+    elif arguments.mode == "resume":
+        command_resume(arguments)
+    elif arguments.mode == "evaluate":
+        evaluate(arguments)
+    #
+    # title = " RVQE Trainer "
+    # print(
+    #     colorful.background("▄" * len(title))
+    #     + "\n"
+    #     + colorful.bold_white_on_background(title)
+    #     + "\n"
+    #     + colorful.background("▀" * len(title))
+    # )
+    #
+    # import argparse
+    #
+    # parser = argparse.ArgumentParser(
+    #     description="RVQE Training Script", formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    # )
+    # parser.add_argument(
+    #     "--port", metavar="P", type=int, default=12335, help="port for distributed computing",
+    # )
+    # parser.add_argument(
+    #     "--num-shards",
+    #     metavar="N",
+    #     type=int,
+    #     default=1,
+    #     help="number of cores to use for parallel processing",
+    # )
+    # parser.add_argument(
+    #     "--num-validation-samples",
+    #     metavar="VALS",
+    #     type=int,
+    #     default=2,
+    #     help="number of validation samples to draw each 10 epochs",
+    # )
+    # parser.add_argument(
+    #     "--tag", metavar="TAG", type=str, default="Hallo Trial", help="tag for checkpoints and logs"
+    # )
+    # parser.add_argument(
+    #     "--epochs", metavar="EP", type=int, default=5000, help="number of learning epochs"
+    # )
+    # parser.add_argument(
+    #     "--timeout",
+    #     metavar="TO",
+    #     type=int,
+    #     default=None,
+    #     help="timeout in s after what time to interrupt",
+    # )
+    # parser.add_argument(
+    #     "--stop-at-loss",
+    #     metavar="SL",
+    #     type=float,
+    #     default=None,
+    #     help="stop at this validation loss",
+    # )
+    # parser.add_argument(
+    #     "--seed",
+    #     metavar="SEED",
+    #     type=int,
+    #     default=82727,
+    #     help="random seed for parameter initialization",
+    # )
+    #
+    # #parser.set_defaults(func=command_train)
+    #
+    # subparsers = parser.add_subparsers(help="available commands")
+    #
+    # parser_train = subparsers.add_parser(
+    #     "train", formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    # )
+    # parser_train.set_defaults(func=command_train)
+    # parser_train.add_argument(
+    #     "--workspace", metavar="W", type=int, default=3, help="qubits to use as workspace",
+    # )
+    # parser_train.add_argument("--stages", metavar="S", type=int, default=2, help="RVQE cell stages")
+    # parser_train.add_argument(
+    #     "--order", metavar="O", type=int, default=2, help="order of activation function"
+    # )
+    # parser_train.add_argument(
+    #     "--degree", metavar="O", type=int, default=2, help="degree of quantum neuron"
+    # )
+    # parser_train.add_argument(
+    #     "--dataset",
+    #     metavar="D",
+    #     type=str,
+    #     default="QC-Finance-train",
+    #     #default="simple-seq",
+    #     help=f"dataset; choose between {', '.join(datasets.all_datasets.keys())}",
+    # )
+    # parser_train.add_argument(
+    #     "--sentence-length",
+    #     metavar="SL",
+    #     type=int,
+    #     default=8,
+    #     help="sentence length for data generators",
+    # )
+    # parser_train.add_argument(
+    #     "--batch-size", metavar="B", type=int, default=2, help="batch size",
+    # )
+    # parser_train.add_argument(
+    #     "--optimizer",
+    #     metavar="OPT",
+    #     type=str,
+    #     default="adam",
+    #     help="optimizer; one of sgd, adam or rmsprop",
+    # )
+    # parser_train.add_argument(
+    #     "--learning-rate",
+    #     metavar="LR",
+    #     type=float,
+    #     default="0.003",
+    #     help="learning rate for optimizer",
+    # )
+    # parser_train.add_argument(
+    #     "--weight-decay", metavar="WD", type=float, default=0.0, help="weight decay for optimizer",
+    # )
+    # parser_train.add_argument(
+    #     "--initial-bias",
+    #     metavar="IB",
+    #     type=float,
+    #     default=1.570796,
+    #     help="initial bias for quantum neuron",
+    # )
+    # parser_train.add_argument(
+    #     "--initial-bias-spread",
+    #     metavar="IBσ ",
+    #     type=float,
+    #     default=0.1,
+    #     help="initial bias spread for quantum neuron",
+    # )
+    # parser_train.add_argument(
+    #     "--initial-weights-spread",
+    #     metavar="IWσ",
+    #     type=float,
+    #     default=0.01,
+    #     help="initial weights spread for quantum neuron",
+    # )
+    # parser_train.add_argument(
+    #     "--initial-unitaries-spread",
+    #     metavar="IUσ",
+    #     type=float,
+    #     default=0.01,
+    #     help="initial spread for unitary layers",
+    # )
+    #
+    # parser_resume = subparsers.add_parser(
+    #     "resume", formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    # )
+    # parser_resume.set_defaults(func=command_resume)
+    # parser_resume.add_argument("--filename",
+    #                            type=str,
+    #                            default=r"C:\Users\Constantin\PycharmProjects\RVQE\checkpoints\checkpoint--Hallo Trial-QC-Finance-Test--933201-final-2023-02-28--15-46-34.tar",
+    #                            #default=r"C:\Users\Constantin\PycharmProjects\RVQE\runs\Feb28_14-58-06_DESKTOP-72RS9E3-Hallo Trial-QC-Finance-Test--933201\1677595594.5719838\events.out.tfevents.1677592686.DESKTOP-72RS9E3.6680.0",
+    #                            help="checkpoint filename")
+    # parser_resume.add_argument(
+    #     "--override-learning-rate",
+    #     metavar="LR",
+    #     type=float,
+    #     default=None,
+    #     help="learning rate for optimizer",
+    # )
+    # parser_resume.add_argument(
+    #     "--override-batch-size", metavar="LR", type=int, default=None, help="batch size",
+    # )
+    #
+    # parser_eval = subparsers.add_parser(
+    #     "evaluate", formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    # )
+    # parser_eval.set_defaults(func=evaluate)
+    # parser_eval.add_argument("--filename",
+    #                            type=str,
+    #                            default=r"C:\Users\Constantin\PycharmProjects\RVQE\checkpoints\checkpoint--Hallo Trial-QC-Finance-Test--933201-final-2023-02-28--15-46-34.tar",
+    #                            #default=r"C:\Users\Constantin\PycharmProjects\RVQE\runs\Feb28_14-58-06_DESKTOP-72RS9E3-Hallo Trial-QC-Finance-Test--933201\1677595594.5719838\events.out.tfevents.1677592686.DESKTOP-72RS9E3.6680.0",
+    #                            help="checkpoint filename")
+    #
+    # args = parser.parse_args()
+    # if not hasattr(args, "func"):
+    #     parser.print_help()
+    # else:
+    #     args.func(args)

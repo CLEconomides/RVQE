@@ -54,10 +54,14 @@ class RVQECell(nn.Module):
         self.order = order
         self.degree = degree
         self.bias = bias
+        print('order', order)
+        print('degree,', degree)
+        print('input size', input_size)
+        print('workspace', workspace_size)
 
         QNL_T = FastQuantumNeuronLayer if fast else QuantumNeuronLayer
         ancilla_count = QNL_T.ancillas_for_order(order)
-
+        print('ancillas', ancilla_count)
         self.inout = list(range(0, input_size))
         self.workspace = list(range(input_size, input_size + workspace_size))
         self.ancillas = list(
